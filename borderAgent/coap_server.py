@@ -11,6 +11,26 @@ from   coap   import    coap,                            \
                         coapObjectSecurity  as oscoap
 import logging_setup
 
+MOTE_IP = 'fd00::212:4b00:1005:fdf3'
+
+
+def get_test():
+    try:
+
+        # retrieve value of 'test' resource
+        p = c.GET('coap://[{0}]/nbr'.format(MOTE_IP),
+                confirmable=True)
+
+        print('=====')
+        print(''.join([chr(b) for b in p]))
+        print('=====')
+
+    except Exception as err:
+        print("Exception")
+        print(err)
+
+
+
 class testResource(coapResource.coapResource):
     
     def __init__(self):
@@ -74,8 +94,13 @@ c.addResource(testResource)
 for t in threading.enumerate():
     print(t.name)
 
-# let the server run
-input('\n\nServer running. Press Enter to close.\n\n')
-
+while True:
+    # let the server run
+    i = input('#')
+    if i == 'get':
+        #print(i)
+        get_test()
+    elif i == 'exit':
+        break
 # close
 c.close()

@@ -10,6 +10,7 @@ from   coap   import    coap,                            \
                         coapDefines         as d,        \
                         coapObjectSecurity  as oscoap
 import logging_setup
+from util import *
 
 MOTE_IP = 'fd00::212:4b00:1005:fdf3'
 
@@ -24,7 +25,8 @@ def get_test():
         print('=====')
         print(''.join([chr(b) for b in p]))
         print('=====')
-
+        var = get_post_variable(p)
+        print(var)
     except Exception as err:
         print("Exception")
         print(err)
@@ -68,7 +70,13 @@ class nbrResource(coapResource.coapResource):
         print('POST received')
         print('payload: ')
         print(payload)
-        
+
+        var = get_post_variable(payload)
+        global MOTE_IP
+        MOTE_IP = var['ip']
+
+        print(var)
+
         respCode        = d.COAP_RC_2_05_CONTENT
         respOptions     = []
         respPayload     = b'post process done'

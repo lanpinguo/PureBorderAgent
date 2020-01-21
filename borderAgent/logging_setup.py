@@ -28,4 +28,4 @@ for loggerName in [
     temp = logging.getLogger(loggerName)
     temp.setLevel(logging.DEBUG)
     temp.addHandler(fileLogger)
-    temp.addHandler(consoleLogger)
+    #temp.addHandler(consoleLogger)

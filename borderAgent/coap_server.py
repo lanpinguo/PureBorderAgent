@@ -31,7 +31,7 @@ def get_test():
 
 
 
-class testResource(coapResource.coapResource):
+class nbrResource(coapResource.coapResource):
     
     def __init__(self):
         # initialize parent class
@@ -78,7 +78,7 @@ class testResource(coapResource.coapResource):
 # open
 c = coap.coap(ipAddress='fd00::1')
 
-testResource = testResource()
+nbrResource = nbrResource()
 
 context = oscoap.SecurityContext(masterSecret   = binascii.unhexlify('000102030405060708090A0B0C0D0E0F'),
                                  senderID       = binascii.unhexlify('736572766572'),
@@ -86,21 +86,26 @@ context = oscoap.SecurityContext(masterSecret   = binascii.unhexlify('0001020304
                                  aeadAlgorithm  = oscoap.AES_CCM_16_64_128())
 
 # add resource - context binding with authorized methods
-#testResource.addSecurityBinding((context, d.METHOD_ALL))
+#nbrResource.addSecurityBinding((context, d.METHOD_ALL))
 
 # install resource
-c.addResource(testResource)
+c.addResource(nbrResource)
 
 for t in threading.enumerate():
     print(t.name)
 
-while True:
-    # let the server run
-    i = input('#')
-    if i == 'get':
-        #print(i)
-        get_test()
-    elif i == 'exit':
-        break
+try:
+    while True:
+        # let the server run
+        i = input('#')
+        if i == 'get':
+            #print(i)
+            get_test()
+        elif i == 'exit':
+            break
+except KeyboardInterrupt:
+    print("key interrupt")
+    
 # close
 c.close()
+sys.exit(0)

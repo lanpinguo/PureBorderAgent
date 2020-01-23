@@ -33,7 +33,7 @@ class bridge(threading.Thread):
 		# open
 		self.c = coap.coap(ipAddress=ipAddress)
 
-		self.nbrResource = nbrResource(notify=self.addNewMote)
+		self.nbrResource = nbrResource(notify=self.setBridgeIp)
 
 		# install resource
 		self.c.addResource(self.nbrResource)
@@ -41,10 +41,18 @@ class bridge(threading.Thread):
 		self.active = True
 		self.start()
 
-	def addNewMote(self,ip,opt):
-		print('%s:%s' % (ip,opt))
+	def setBridgeIp(self,ip,opt):
 		if opt == '2':
 			self.bridge_ip = ip
+		
+
+	def addNewMote(self,ip):
+		if ip is None:
+			return 
+		elif ip == 'NULL':
+			return
+			
+		print('%s' % (ip))
 		self.mote_list[ip] = mote(ip)
 		print(self.mote_list)
 		
@@ -53,18 +61,36 @@ class bridge(threading.Thread):
 		self.join()
 		self.c.close()
 
+	def get_nbr(self):
+		try:
+
+			# retrieve value of 'test' resource
+			p = self.c.GET('coap://[%s]/nbr' % (self.bridge_ip),
+					confirmable=True)
+
+			var = get_post_variable(p)
+
+			return(var['nbr'])
+			
+		except Exception as err:
+			print("Exception")
+			print(err)
+			
+			return None
+
 	def get_sensor(self,sensor):
 		try:
 
 			# retrieve value of 'test' resource
-			p = self.c.GET('coap://[{0}]/nbr'.format(self.bridge_ip),
+			p = self.c.GET('coap://[%s]/%s' % (self.bridge_ip,sensor),
 					confirmable=True)
 
-			print('=====')
-			print(''.join([chr(b) for b in p]))
-			print('=====')
+			#print('=====')
+			#print(''.join([chr(b) for b in p]))
+			#print('=====')
 			var = get_post_variable(p)
 			print(var)
+			
 		except Exception as err:
 			print("Exception")
 			print(err)
@@ -73,7 +99,8 @@ class bridge(threading.Thread):
 	
 		while self.active:
 			if self.bridge_ip != '':
-				self.get_sensor('nbr')
+				nbr = self.get_nbr()
+				self.addNewMote(nbr)
 			time.sleep(2)
 
 
@@ -97,9 +124,9 @@ class nbrResource(coapResource.coapResource):
 
 	def PUT(self,options,payload):
 		
-		print('PUT received')
-		print('payload: ')
-		print(payload)
+		#print('PUT received')
+		#print('payload: ')
+		#print(payload)
 		
 		respCode		= d.COAP_RC_2_05_CONTENT
 		respOptions	 = []
@@ -110,9 +137,9 @@ class nbrResource(coapResource.coapResource):
 
 	def POST(self,options,payload):
 		
-		print('POST received')
-		print('payload: ')
-		print(payload)
+		#print('POST received')
+		#print('payload: ')
+		#print(payload)
 
 		var = get_post_variable(payload)
 		print(var)
@@ -130,8 +157,8 @@ if __name__ == '__main__':
 
 	b = bridge(ipAddress = 'FD00::1')
 
-	for t in threading.enumerate():
-		print(t.name)
+	#for t in threading.enumerate():
+	#	print(t.name)
 
 	try:
 		while True:

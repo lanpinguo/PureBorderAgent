@@ -17,6 +17,7 @@ motes_ip = { 'fish'      :'fd00::0212:4b00:1940:c0e3',
 			'back_light' : 'fd00::0212:4b00:1940:c17a'}
 
 
+
 def set_actuator(c,target,payload):
 	try:
 		# retrieve value of 'test' resource
@@ -44,6 +45,39 @@ def get_sensor(c,target):
 		print("Exception")
 		print(err)
 
+def cmd_sw_config(coap,mote,args):
+	if len(args) < 1:
+		print('too short parameter')
+		return 1
+
+	mask = 0
+	if len(args) == 2:
+		if args[0] == 'all':
+			mask = 0xFFFFFFFF
+		else:
+			try :
+				index = int(args[0])
+			except Exception as err:
+				print(err)
+				return 2
+			if index >= 8 :
+				print("Wrong Mask Parameter")
+				return 3
+			mask = (1<<index)
+
+	state = args[1]
+	if state == 'on':
+		payload = b"&state=%lx&mask=%lx" % (mask,mask)
+	elif state == 'off':
+		payload = b"&state=%lx&mask=%lx" % ((~mask) & 0xFFFFFFFF,mask)
+	else:
+		print('Wrong State Parameter')
+		return 4
+	print(payload)
+	set_actuator(coap,mote,payload)
+	return 0
+
+
 def cmd_parser(coap,args):
 	if len(args) == 0:
 		return 0
@@ -54,35 +88,18 @@ def cmd_parser(coap,args):
 	elif cmd == 'fish':
 		#fish jar control
 		mote = motes_ip['fish']
-		if len(args) < 2:
-			print('too short parameter')
-			return 1
-
-		mask = 0
-		if len(args) == 3:
-			if args[1] == 'all':
-				mask = ((1<<0)|(1<<1)|(1<<2)|(1<<3))
-			else:
-				try :
-					index = int(args[1])
-				except Exception as err:
-					print(err)
-					return 2
-				if index >= 4 :
-					print("Wrong Mask Parameter")
-					return 3
-				mask = (1<<index)
-
-		state = args[2]
-		if state == 'on':
-			payload = b"&state=%lx&mask=%lx" % (mask,mask)
-		elif state == 'off':
-			payload = b"&state=%lx&mask=%lx" % ((~mask) & 0xFFFFFFFF,mask)
-		else:
-			print('Wrong State Parameter')
-			return 4
-		print(payload)
-		set_actuator(coap,mote,payload)
+		result = cmd_sw_config(coap,mote,args[1::])
+		return result
+	elif cmd == 'front':
+		#fish jar control
+		mote = motes_ip['front_light']
+		result = cmd_sw_config(coap,mote,args[1::])
+		return result
+	elif cmd == 'back':
+		#fish jar control
+		mote = motes_ip['back_light']
+		result = cmd_sw_config(coap,mote,args[1::])
+		return result
 	elif cmd == 'exit':
 		return -1
 	return 0

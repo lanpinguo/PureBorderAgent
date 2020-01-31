@@ -24,6 +24,7 @@ for loggerName in [
         'coapTransmitter',
         'coapMessage',
         'socketUdpReal',
+        'bridgeAgent'
     ]:
     temp = logging.getLogger(loggerName)
     temp.setLevel(logging.DEBUG)

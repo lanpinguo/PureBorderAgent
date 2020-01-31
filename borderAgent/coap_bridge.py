@@ -1,6 +1,8 @@
 import os
 import sys
 import time
+import select
+import socket
 
 here = sys.path[0]
 sys.path.insert(0, os.path.join(here,'..'))
@@ -11,11 +13,19 @@ from   coap   import	coap,							\
 						coapResource,					\
 						coapDefines		 as d,		\
 						coapObjectSecurity  as oscoap
-import logging_setup
 from util import *
 
-MOTE_IP = '' #fd00::212:4b00:1005:fdf3'
+import logging
+class NullHandler(logging.Handler):
+    def emit(self, record):
+        pass
+log = logging.getLogger('bridgeAgent')
+log.setLevel(logging.ERROR)
+log.addHandler(NullHandler())
 
+
+MOTE_IP = '' #fd00::212:4b00:1005:fdf3'
+TIMEOUT = 2
 class mote():
 	def __init__(self,ip,desc=''):
 		self.ip = ip
@@ -23,21 +33,39 @@ class mote():
 		
 		
 
-class bridge(threading.Thread):
-	def __init__(self,ipAddress=''):
+class bridgeAgent(threading.Thread):
+	BUFSIZE = 1024
+
+	def __init__(self,ipAddress='',server_address = '/tmp/borderAgent'):
 		# initialize the parent class
 		threading.Thread.__init__(self)
 
 		self.mote_list = {}
 		self.bridge_ip = ''
 		# open
-		self.c = coap.coap(ipAddress=ipAddress)
+		self.coap = coap.coap(ipAddress=ipAddress)
 
 		self.nbrResource = nbrResource(notify=self.setBridgeIp)
 
 		# install resource
-		self.c.addResource(self.nbrResource)
+		self.coap.addResource(self.nbrResource)
 		
+		
+		
+		# Make sure the socket does not already exist
+		try:
+			os.unlink(server_address)
+		except OSError:
+			if os.path.exists(server_address):
+				raise
+		# Create a UDS socket
+		self.socket_handler = socket.socket(socket.AF_UNIX,socket.SOCK_DGRAM)
+		# Bind the socket to the port
+		log.info(  'starting up on %s' % server_address)
+		self.socket_handler.bind(server_address)
+
+
+
 		self.active = True
 		self.start()
 
@@ -52,20 +80,21 @@ class bridge(threading.Thread):
 		elif ip == 'NULL':
 			return
 			
-		print('%s' % (ip))
+		log.debug('%s' % (ip))
 		self.mote_list[ip] = mote(ip)
-		print(self.mote_list)
+		#print(self.mote_list)
 		
 	def shutdown(self):
 		self.active = False
 		self.join()
-		self.c.close()
+		self.coap.close()
+		self.socket_handler.close()
 
 	def get_nbr(self):
 		try:
 
 			# retrieve value of 'test' resource
-			p = self.c.GET('coap://[%s]/nbr' % (self.bridge_ip),
+			p = self.coap.GET('coap://[%s]/nbr' % (self.bridge_ip),
 					confirmable=True)
 
 			var = get_post_variable(p)
@@ -73,8 +102,7 @@ class bridge(threading.Thread):
 			return(var['nbr'])
 			
 		except Exception as err:
-			print("Exception")
-			print(err)
+			log.critical(err)
 			
 			return None
 
@@ -82,26 +110,80 @@ class bridge(threading.Thread):
 		try:
 
 			# retrieve value of 'test' resource
-			p = self.c.GET('coap://[%s]/%s' % (self.bridge_ip,sensor),
+			p = self.coap.GET('coap://[%s]/%s' % (self.bridge_ip,sensor),
 					confirmable=True)
 
 			#print('=====')
 			#print(''.join([chr(b) for b in p]))
 			#print('=====')
 			var = get_post_variable(p)
-			print(var)
+			#print(var)
 			
 		except Exception as err:
-			print("Exception")
-			print(err)
+			log.critical((err))
+
+
+	#======================== private =========================================
+	def _socket_ready_handle(self, s):
+		"""
+		Handle an input-ready socket
+
+		@param s The socket object that is ready
+		@returns 0 on success, -1 on error
+		"""
+
+		if s and s == self.socket_handler:
+			try:
+				# blocking wait for something from UDP socket
+				raw,conn = self.socket_handler.recvfrom(self.BUFSIZE)
+			except socket.error as err:
+				log.critical("socket error: {0}".format(err))
+				return -1
+			else:
+				if not raw:
+					log.error("no data read from socket, stopping")
+					return -1
+				if not self.active:
+					log.warning("active is false")
+					return -1
+
+			#print(conn)
+			timestamp = time.time()
+			source	= conn
+			#data	  = [ord(b) for b in raw] #python2
+			data	  = raw  #python3
+			log.debug("got {2} from {1} at {0}".format(timestamp,source,data))
+			#print("got {2} from {1} at {0}".format(timestamp,source,data))
+			self.socket_handler.sendto(data,source)
+			#call the callback with the params
+			#self.callback(timestamp,source,data)
+		else:
+			log.error("Unknown socket ready: " + str(s))
+			return -1
+
+		return 0
+
+
 
 	def run(self):
-	
+		epoll = select.epoll()
+		epoll.register(self.socket_handler.fileno(), select.EPOLLIN)
+		fd_to_socket = {self.socket_handler.fileno():self.socket_handler,}
+
+
 		while self.active:
+			events = epoll.poll(TIMEOUT)
+			if events :
+				for fd, event in events:    
+					if event & select.EPOLLIN:   
+						sock = fd_to_socket[fd]
+						if self._socket_ready_handle(sock) != 0:
+							self.active = False
+							break
+
 			if self.bridge_ip != '':
 				nbr = self.get_nbr()
 				self.addNewMote(nbr)
-			time.sleep(2)
 
 
 
@@ -114,7 +196,7 @@ class nbrResource(coapResource.coapResource):
 		self.notify = notify
 		
 	def GET(self,options=[]):
-		print('GET received')
+		#print('GET received')
 		
 		respCode		= d.COAP_RC_2_05_CONTENT
 		respOptions	 = []
@@ -142,7 +224,7 @@ class nbrResource(coapResource.coapResource):
 		#print(payload)
 
 		var = get_post_variable(payload)
-		print(var)
+		#print(var)
 		if self.notify:
 			self.notify(var['ip'],var['opt'])
 			
@@ -154,8 +236,8 @@ class nbrResource(coapResource.coapResource):
 
 
 if __name__ == '__main__':
-
-	b = bridge(ipAddress = 'FD00::1')
+	import logging_setup
+	b = bridgeAgent(ipAddress = 'FD00::1')
 
 	#for t in threading.enumerate():
 	#	print(t.name)

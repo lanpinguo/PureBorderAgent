@@ -15,11 +15,28 @@
 </div>
 <div class="post-tabs">
     <ul class="nav nav-tabs">
-        <li{% if not show_followed %} class="active"{% endif %}><a href="{{ url_for('.show_all') }}">All</a></li>
+        <li{% if not show_followed %} class="active"{% endif %}>
+            <a href="{{ url_for('.show_all') }}">All</a>
+        </li>
         {% if current_user.is_authenticated %}
-        <li{% if show_followed %} class="active"{% endif %}><a href="{{ url_for('.show_followed') }}">Followers</a></li>
+        <li{% if not show_followed %} class="active"{% endif %}>
+			<a href="{{ url_for('.show_motes') }}">Motes</a>
+        </li>
+
+
         {% endif %}
     </ul>
+    <div class="page-header">
+        <p>
+            <a class="btn btn-danger" href="{{ url_for('.edit_profile') }}">Front</a>
+            <a class="btn btn-danger" href="{{ url_for('.edit_profile') }}">Fish</a>
+        </p>
+        <p>
+            <a class="btn btn-danger" href="{{ url_for('.edit_profile') }}">Back</a>
+            <a class="btn btn-danger" href="{{ url_for('.edit_profile') }}">Pump</a>
+        </p>
+    </div>
+
     {% include '_posts.html' %}
 </div>
 {% if pagination %}

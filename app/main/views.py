@@ -217,6 +217,14 @@ def show_followed():
     resp.set_cookie('show_followed', '1', max_age=30*24*60*60)
     return resp
 
+@main.route('/motes')
+#@login_required
+def show_motes():
+    print("show motes here")
+    resp = make_response(redirect(url_for('.index')))
+    resp.set_cookie('show_motes', '1', max_age=30*24*60*60)
+    return resp
+
 
 @main.route('/moderate')
 @login_required

@@ -7,6 +7,84 @@ from flask_login import LoginManager
 from flask_pagedown import PageDown
 from config import config
 
+
+import socket
+import sys
+import os
+import time
+
+class BridgeREST():
+
+    def __init__(self):
+        # Create a UDS socket
+        self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+        
+        # Connect the socket to the port where the server is listening
+        self.server_address = '/tmp/borderAgent'
+        self.client_address = '/tmp/borderTest'
+
+        # Make sure the socket does not already exist
+        try:
+            os.unlink(self.client_address)
+        except OSError:
+            if os.path.exists(self.client_address):
+                raise
+
+        print( 'connecting to %s' % self.server_address)
+        try:
+            self.sock.bind(self.client_address)
+        except (socket.error) as msg:
+            print(msg)
+    
+    def post(self,res,payload):
+        result = b''
+        try:
+            # Send data
+            message = res + b':' + payload
+            print(  message)
+            self.sock.sendto(message,self.server_address)
+
+            wait_cnt = 10
+            while  wait_cnt > 0 :
+                try:
+                    result = self.sock.recv(4096, 0x40)
+                    break
+                except BlockingIOError as e:
+                    time.sleep(0.1)
+                    wait_cnt -= 1
+                    
+            print( 'received "%s"' % result)
+        finally:
+            return result
+
+    def get(self,res):
+        result = b''
+        try:
+            
+            # Send data
+            message = res
+            print(  message)
+            self.sock.sendto(message,self.server_address)
+        
+            wait_cnt = 10
+            while  wait_cnt > 0 :
+                try:
+                    result = self.sock.recv(4096, 0x40)
+                    break
+                except BlockingIOError as e:
+                    time.sleep(0.1)
+                    wait_cnt -= 1
+
+            print( 'received "%s"' % result)
+        finally:
+            return result
+
+    def close(self):
+        print( 'closing socket')
+        self.sock.close()
+
+
+bg = BridgeREST()
 bootstrap = Bootstrap()
 mail = Mail()
 moment = Moment()

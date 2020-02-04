@@ -7,6 +7,7 @@ from .forms import EditProfileForm, EditProfileAdminForm, PostForm,\
 from .. import db
 from ..models import Permission, Role, User, Post, Comment
 from ..decorators import admin_required, permission_required
+from .. import bg
 
 
 @main.route('/', methods=['GET', 'POST'])
@@ -217,13 +218,48 @@ def show_followed():
     resp.set_cookie('show_followed', '1', max_age=30*24*60*60)
     return resp
 
-@main.route('/motes')
+@main.route('/show_motes')
 #@login_required
 def show_motes():
-    print("show motes here")
+    print("show_motes here")
     resp = make_response(redirect(url_for('.index')))
     resp.set_cookie('show_motes', '1', max_age=30*24*60*60)
     return resp
+
+@main.route('/front')
+#@login_required
+def ctrl_front():
+    print("ctrl_front here")
+    bg.get(b'sw_state')
+    resp = make_response(redirect(url_for('.index')))
+    resp.set_cookie('show_motes', '1', max_age=30*24*60*60)
+    return resp
+
+
+@main.route('/back')
+#@login_required
+def ctrl_back():
+    print("ctrl_back here")
+    resp = make_response(redirect(url_for('.index')))
+    resp.set_cookie('show_motes', '1', max_age=30*24*60*60)
+    return resp
+
+@main.route('/fish')
+#@login_required
+def ctrl_fish():
+    print("ctrl_fish here")
+    resp = make_response(redirect(url_for('.index')))
+    resp.set_cookie('show_motes', '1', max_age=30*24*60*60)
+    return resp
+
+@main.route('/pump')
+#@login_required
+def ctrl_pump():
+    print("ctrl_pump here")
+    resp = make_response(redirect(url_for('.index')))
+    resp.set_cookie('show_motes', '1', max_age=30*24*60*60)
+    return resp
+
 
 
 @main.route('/moderate')

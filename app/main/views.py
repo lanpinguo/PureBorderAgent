@@ -231,55 +231,62 @@ def show_motes():
     resp.set_cookie('show_motes', '1', max_age=30*24*60*60)
     return resp
 
-@main.route('/front_on')
+@main.route('/front_on/<int:channel>')
 #@login_required
-def ctrl_front_on():
-    print("ctrl_front here")
-    bg.post(motes_ip['front_light'].encode('utf-8'),b'relay-sw',b'&state=0xFF&mask=0xFF')
+def ctrl_front_on(channel):
+    print("ctrl_front :")
+    print(channel)
+    payload = b'&state=0xFF&mask=%lx' % (channel & 0xFF)
+    bg.post(motes_ip['front_light'].encode('utf-8'),b'relay-sw',payload)
     resp = make_response(redirect(url_for('.index')))
     resp.set_cookie('show_motes', '1', max_age=30*24*60*60)
     return resp
 
-@main.route('/front_off')
+@main.route('/front_off/<int:channel>')
 #@login_required
-def ctrl_front_off():
+def ctrl_front_off(channel):
     print("ctrl_front here")
-    bg.post(motes_ip['front_light'].encode('utf-8'),b'relay-sw',b'&state=0x0&mask=0xFF')
+    payload = b'&state=0&mask=%lx' % (channel & 0xFF)
+    bg.post(motes_ip['front_light'].encode('utf-8'),b'relay-sw', payload)
     resp = make_response(redirect(url_for('.index')))
     resp.set_cookie('show_motes', '1', max_age=30*24*60*60)
     return resp
 
 
-@main.route('/back_on')
+@main.route('/back_on/<int:channel>')
 #@login_required
-def ctrl_back_on():
+def ctrl_back_on(channel):
     print("ctrl_back here")
-    bg.post(motes_ip['back_light'].encode('utf-8'),b'relay-sw',b'&state=0xFF&mask=0xFF')
+    payload = b'&state=0xFF&mask=%lx' % (channel & 0xFF)
+    bg.post(motes_ip['back_light'].encode('utf-8'),b'relay-sw', payload)
     resp = make_response(redirect(url_for('.index')))
     resp.set_cookie('show_motes', '1', max_age=30*24*60*60)
     return resp
 
-@main.route('/back_off')
+@main.route('/back_off/<int:channel>')
 #@login_required
-def ctrl_back_off():
-    bg.post(motes_ip['back_light'].encode('utf-8'),b'relay-sw',b'&state=0x0&mask=0xFF')
+def ctrl_back_off(channel):
+    payload = b'&state=0&mask=%lx' % (channel & 0xFF)
+    bg.post(motes_ip['back_light'].encode('utf-8'),b'relay-sw',payload)
     resp = make_response(redirect(url_for('.index')))
     resp.set_cookie('show_motes', '1', max_age=30*24*60*60)
     return resp
 
 
-@main.route('/fish_jar_on')
+@main.route('/fish_jar_on/<int:channel>')
 #@login_required
-def ctrl_fish_jar_on():
-    bg.post(motes_ip['fish'].encode('utf-8'),b'relay-sw',b'&state=0xFF&mask=0xFF')
+def ctrl_fish_jar_on(channel):
+    payload = b'&state=0xFF&mask=%lx' % (channel & 0xFF)
+    bg.post(motes_ip['fish'].encode('utf-8'),b'relay-sw',payload)
     resp = make_response(redirect(url_for('.index')))
     resp.set_cookie('show_motes', '1', max_age=30*24*60*60)
     return resp
 
-@main.route('/fish_jar_off')
+@main.route('/fish_jar_off/<int:channel>')
 #@login_required
-def ctrl_fish_jar_off():
-    bg.post(motes_ip['fish'].encode('utf-8'),b'relay-sw',b'&state=0x0&mask=0xFF')
+def ctrl_fish_jar_off(channel):
+    payload = b'&state=0&mask=%lx' % (channel & 0xFF)
+    bg.post(motes_ip['fish'].encode('utf-8'),b'relay-sw',payload)
     resp = make_response(redirect(url_for('.index')))
     resp.set_cookie('show_motes', '1', max_age=30*24*60*60)
     return resp

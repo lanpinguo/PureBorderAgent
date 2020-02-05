@@ -31,45 +31,67 @@
 
 	<div class="row">
         <div class="span12">
-          <table class="table table-hover">
-            <thead>
-              <tr>
-                <th>编号 ID</th>
-                <th>描述 DESC</th>
-                <th>分组 GROUP</th>
-                <th>动作 ACTION</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>1</td>
-                <td>FRONT</td>
-                <td>1</td>
-                <td>
-                    <a class="btn btn-default" href="{{ url_for('.ctrl_front_on') }}">ON</a>
-                    <a class="btn btn-danger" href="{{ url_for('.ctrl_front_off') }}">OFF</a>
-                </td>
-              </tr>
-              <tr>
-                <td>2</td>
-                <td>BACK</td>
-                <td>2</td>
-                <td>
-                    <a class="btn btn-default" href="{{ url_for('.ctrl_back_on') }}">ON</a>
-                    <a class="btn btn-danger" href="{{ url_for('.ctrl_back_off') }}">OFF</a>
-                </td>
-              </tr>
-              <tr>
-                <td>3</td>
-                <td>FISH-JAR</td>
-                <td>3</td>
-                <td>
-                    <a class="btn btn-default" href="{{ url_for('.ctrl_fish_jar_on') }}">ON</a>
-                    <a class="btn btn-danger" href="{{ url_for('.ctrl_fish_jar_off') }}">OFF</a>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>编号 ID</th>
+                        <th>描述 DESC</th>
+                        <th>分组 GROUP</th>
+                        <th>动作 ACTION</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>1</td>
+                        <td>FRONT</td>
+                        <td>Light</td>
+                        <td>
+                            <a class="btn btn-default" href="{{ url_for('.ctrl_front_on', channel=1) }}">ON</a>
+                            <a class="btn btn-danger" href="{{ url_for('.ctrl_front_off', channel=1) }}">OFF</a>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td>2</td>
+                        <td>FRONT</td>
+                        <td>AC-PANEL</td>
+                        <td>
+                            <a class="btn btn-default" href="{{ url_for('.ctrl_front_on', channel=2) }}">ON</a>
+                            <a class="btn btn-danger" href="{{ url_for('.ctrl_front_off', channel=2) }}">OFF</a>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td>3</td>
+                        <td>BACK</td>
+                        <td>ALL</td>
+                        <td>
+                            <a class="btn btn-default" href="{{ url_for('.ctrl_back_on', channel=255) }}">ON</a>
+                            <a class="btn btn-danger" href="{{ url_for('.ctrl_back_off', channel=255) }}">OFF</a>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td>4</td>
+                        <td>FISH-JAR</td>
+                        <td>LOW POWER</td>
+                        <td>
+                            <a class="btn btn-default" href="{{ url_for('.ctrl_fish_jar_on', channel=7) }}">ON</a>
+                            <a class="btn btn-danger" href="{{ url_for('.ctrl_fish_jar_off', channel=7) }}">OFF</a>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td>5</td>
+                        <td>FISH-JAR</td>
+                        <td>ALL</td>
+                        <td>
+                            <a class="btn btn-default" href="{{ url_for('.ctrl_fish_jar_on', channel=15) }}">ON</a>
+                            <a class="btn btn-danger" href="{{ url_for('.ctrl_fish_jar_off', channel=15) }}">OFF</a>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
     </div>
   

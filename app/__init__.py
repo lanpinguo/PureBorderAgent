@@ -7,7 +7,6 @@ from flask_login import LoginManager
 from flask_pagedown import PageDown
 from config import config
 
-
 import socket
 import sys
 import os
@@ -36,12 +35,13 @@ class BridgeREST():
         except (socket.error) as msg:
             print(msg)
     
-    def post(self,res,payload):
+    def post(self,ip,res,payload):
         result = b''
         try:
             # Send data
-            message = res + b':' + payload
-            print(  message)
+            message = b'post' + b'://[%d]' % len(res) + b'/' \
+                + b'[' + ip + b']'+ b'/' +  res + payload
+            print(message)
             self.sock.sendto(message,self.server_address)
 
             wait_cnt = 10
@@ -57,12 +57,13 @@ class BridgeREST():
         finally:
             return result
 
-    def get(self,res):
+    def get(self,ip,res):
         result = b''
         try:
-            
             # Send data
-            message = res
+            print(ip)
+            message = b'get' + b'://[%d]' % len(res) + b'/' \
+                + b'[' + ip + b']'+ b'/' +  res
             print(  message)
             self.sock.sendto(message,self.server_address)
         
@@ -82,6 +83,8 @@ class BridgeREST():
     def close(self):
         print( 'closing socket')
         self.sock.close()
+
+
 
 
 bg = BridgeREST()

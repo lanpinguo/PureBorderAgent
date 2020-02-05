@@ -122,6 +122,40 @@ class bridgeAgent(threading.Thread):
 		except Exception as err:
 			log.critical((err))
 
+	def get_motes(self):
+		return self.mote_list
+
+	def get(self,ip,res):
+		try:
+
+			# retrieve value of 'test' resource
+			p = self.coap.GET('coap://[%s]/%s' % (ip,res),
+					confirmable=True)
+
+			print(p)
+			return p
+			
+		except Exception as err:
+			log.critical((err))
+			return b''
+
+	def post(self,ip,res,payload):
+		try:
+
+			# retrieve value of 'test' resource
+			p = self.coap.PUT('coap://[%s]/%s' % (ip,res),
+					confirmable=True,payload=payload)
+			print(p)
+			return p
+			
+		except Exception as err:
+			log.critical((err))
+			return b''
+
+	def recv_handler(self,timestamp,source,data):
+		option = data.split(b'/')
+		print(option)
+		self.socket_handler.sendto(data,source)
 
 	#======================== private =========================================
 	def _socket_ready_handle(self, s):
@@ -154,9 +188,8 @@ class bridgeAgent(threading.Thread):
 			data	  = raw  #python3
 			log.debug("got {2} from {1} at {0}".format(timestamp,source,data))
 			#print("got {2} from {1} at {0}".format(timestamp,source,data))
-			self.socket_handler.sendto(data,source)
-			#call the callback with the params
-			#self.callback(timestamp,source,data)
+			#call the process handler with the params
+			self.recv_handler(timestamp,source,data)
 		else:
 			log.error("Unknown socket ready: " + str(s))
 			return -1

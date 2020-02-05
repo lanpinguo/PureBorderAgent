@@ -245,7 +245,7 @@ def ctrl_front():
 #@login_required
 def ctrl_back():
     print("ctrl_back here")
-    bg.post(motes_ip['back_light'].encode('utf-8'),b'relay_sw',b'&state=0x1&mask=0x1')
+    bg.post(motes_ip['back_light'].encode('utf-8'),b'relay-sw',b'&state=0xFF&mask=0xFF')
     resp = make_response(redirect(url_for('.index')))
     resp.set_cookie('show_motes', '1', max_age=30*24*60*60)
     return resp
@@ -262,6 +262,7 @@ def ctrl_fish():
 #@login_required
 def ctrl_pump():
     print("ctrl_pump here")
+    bg.post(motes_ip['back_light'].encode('utf-8'),b'relay-sw',b'&state=0x0&mask=0xFF')
     resp = make_response(redirect(url_for('.index')))
     resp.set_cookie('show_motes', '1', max_age=30*24*60*60)
     return resp

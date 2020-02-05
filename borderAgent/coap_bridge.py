@@ -155,7 +155,21 @@ class bridgeAgent(threading.Thread):
 	def recv_handler(self,timestamp,source,data):
 		option = data.split(b'/')
 		print(option)
-		self.socket_handler.sendto(data,source)
+		opt = option[0].strip(b':')
+		res_len = int(option[2].strip(b'[').strip(b']'))
+		addr = option[3].strip(b'[').strip(b']')
+		addr = ''.join([chr(b) for b in addr])
+		res = option[4][0:res_len]
+		res = ''.join([chr(b) for b in res])
+		payload = option[4][res_len::]
+		print(opt)
+		print(addr)
+		print(res)
+		print(payload)
+		result = b''
+		if opt == b'post':
+			result = self.post(addr,res,payload)
+		self.socket_handler.sendto(result,source)
 
 	#======================== private =========================================
 	def _socket_ready_handle(self, s):

@@ -231,38 +231,55 @@ def show_motes():
     resp.set_cookie('show_motes', '1', max_age=30*24*60*60)
     return resp
 
-@main.route('/front')
+@main.route('/front_on')
 #@login_required
-def ctrl_front():
+def ctrl_front_on():
     print("ctrl_front here")
-    bg.get(motes_ip['back_light'].encode('utf-8'),b'relay_sw')
+    bg.post(motes_ip['front_light'].encode('utf-8'),b'relay-sw',b'&state=0xFF&mask=0xFF')
+    resp = make_response(redirect(url_for('.index')))
+    resp.set_cookie('show_motes', '1', max_age=30*24*60*60)
+    return resp
+
+@main.route('/front_off')
+#@login_required
+def ctrl_front_off():
+    print("ctrl_front here")
+    bg.post(motes_ip['front_light'].encode('utf-8'),b'relay-sw',b'&state=0x0&mask=0xFF')
     resp = make_response(redirect(url_for('.index')))
     resp.set_cookie('show_motes', '1', max_age=30*24*60*60)
     return resp
 
 
-@main.route('/back')
+@main.route('/back_on')
 #@login_required
-def ctrl_back():
+def ctrl_back_on():
     print("ctrl_back here")
     bg.post(motes_ip['back_light'].encode('utf-8'),b'relay-sw',b'&state=0xFF&mask=0xFF')
     resp = make_response(redirect(url_for('.index')))
     resp.set_cookie('show_motes', '1', max_age=30*24*60*60)
     return resp
 
-@main.route('/fish')
+@main.route('/back_off')
 #@login_required
-def ctrl_fish():
-    print("ctrl_fish here")
+def ctrl_back_off():
+    bg.post(motes_ip['back_light'].encode('utf-8'),b'relay-sw',b'&state=0x0&mask=0xFF')
     resp = make_response(redirect(url_for('.index')))
     resp.set_cookie('show_motes', '1', max_age=30*24*60*60)
     return resp
 
-@main.route('/pump')
+
+@main.route('/fish_jar_on')
 #@login_required
-def ctrl_pump():
-    print("ctrl_pump here")
-    bg.post(motes_ip['back_light'].encode('utf-8'),b'relay-sw',b'&state=0x0&mask=0xFF')
+def ctrl_fish_jar_on():
+    bg.post(motes_ip['fish'].encode('utf-8'),b'relay-sw',b'&state=0xFF&mask=0xFF')
+    resp = make_response(redirect(url_for('.index')))
+    resp.set_cookie('show_motes', '1', max_age=30*24*60*60)
+    return resp
+
+@main.route('/fish_jar_off')
+#@login_required
+def ctrl_fish_jar_off():
+    bg.post(motes_ip['fish'].encode('utf-8'),b'relay-sw',b'&state=0x0&mask=0xFF')
     resp = make_response(redirect(url_for('.index')))
     resp.set_cookie('show_motes', '1', max_age=30*24*60*60)
     return resp

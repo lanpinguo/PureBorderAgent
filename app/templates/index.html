@@ -15,9 +15,11 @@
 </div>
 <div class="post-tabs">
     <ul class="nav nav-tabs">
+        <!-- 
         <li{% if not show_followed %} class="active"{% endif %}>
             <a href="{{ url_for('.show_all') }}">All</a>
         </li>
+        --> 
         {% if current_user.is_authenticated %}
         <li{% if not show_followed %} class="active"{% endif %}>
 			<a href="{{ url_for('.show_motes') }}">Motes</a>
@@ -26,19 +28,55 @@
 
         {% endif %}
     </ul>
-    <div class="page-header">
-        <p>
-            <a class="btn btn-danger" href="{{ url_for('.ctrl_front') }}">Front</a>
-            <a class="btn btn-danger" href="{{ url_for('.ctrl_fish') }}">Fish</a>
-        </p>
-        <p>
-            <a class="btn btn-danger" href="{{ url_for('.ctrl_back') }}">Back</a>
-            <a class="btn btn-danger" href="{{ url_for('.ctrl_pump') }}">Pump</a>
-        </p>
-    </div>
 
-    {% include '_posts.html' %}
+	<div class="row">
+        <div class="span12">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th>编号 ID</th>
+                <th>描述 DESC</th>
+                <th>分组 GROUP</th>
+                <th>动作 ACTION</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1</td>
+                <td>FRONT</td>
+                <td>1</td>
+                <td>
+                    <a class="btn btn-default" href="{{ url_for('.ctrl_front_on') }}">ON</a>
+                    <a class="btn btn-danger" href="{{ url_for('.ctrl_front_off') }}">OFF</a>
+                </td>
+              </tr>
+              <tr>
+                <td>2</td>
+                <td>BACK</td>
+                <td>2</td>
+                <td>
+                    <a class="btn btn-default" href="{{ url_for('.ctrl_back_on') }}">ON</a>
+                    <a class="btn btn-danger" href="{{ url_for('.ctrl_back_off') }}">OFF</a>
+                </td>
+              </tr>
+              <tr>
+                <td>3</td>
+                <td>FISH-JAR</td>
+                <td>3</td>
+                <td>
+                    <a class="btn btn-default" href="{{ url_for('.ctrl_fish_jar_on') }}">ON</a>
+                    <a class="btn btn-danger" href="{{ url_for('.ctrl_fish_jar_off') }}">OFF</a>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+    </div>
+  
+
+    <!-- {% include '_posts.html' %} -->
 </div>
+<!--
 {% if pagination %}
 <div class="pagination">
     {{ macros.pagination_widget(pagination, '.index') }}
@@ -50,3 +88,4 @@
 {{ super() }}
 {{ pagedown.include_pagedown() }}
 {% endblock %}
+-->

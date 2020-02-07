@@ -134,7 +134,7 @@ class bridgeAgent(threading.Thread):
 			p = self.coap.GET('coap://[%s]/%s' % (ip,res),
 					confirmable=True)
 
-			print(p)
+			#print(p)
 			return p
 			
 		except Exception as err:
@@ -147,7 +147,7 @@ class bridgeAgent(threading.Thread):
 			# retrieve value of 'test' resource
 			p = self.coap.PUT('coap://[%s]/%s' % (ip,res),
 					confirmable=True,payload=payload)
-			print(p)
+			#print(p)
 			return p
 			
 		except Exception as err:
@@ -164,10 +164,10 @@ class bridgeAgent(threading.Thread):
 		res = option[4][0:res_len]
 		res = ''.join([chr(b) for b in res])
 		payload = option[4][res_len::]
-		print(opt)
-		print(addr)
-		print(res)
-		print(payload)
+		#print(opt)
+		#print(addr)
+		#print(res)
+		#print(payload)
 		result = b''
 		if opt == b'post':
 			result = self.post(addr,res,payload)
@@ -231,8 +231,9 @@ class bridgeAgent(threading.Thread):
 							break
 
 			if self.bridge_ip != '':
-				nbr = self.get_nbr()
-				self.addNewMote(nbr)
+				#nbr = self.get_nbr()
+				#self.addNewMote(nbr)
+				pass
 
 
 

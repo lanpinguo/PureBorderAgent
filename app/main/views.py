@@ -16,6 +16,7 @@ motes_ip = { 'fish'      :'fd00::0212:4b00:1940:c0e3',
 
 
 @main.route('/', methods=['GET', 'POST'])
+@login_required
 def index():
     form = PostForm()
     if current_user.can(Permission.WRITE) and form.validate_on_submit():

@@ -224,7 +224,7 @@ def show_followed():
     return resp
 
 @main.route('/show_motes')
-#@login_required
+@login_required
 def show_motes():
     print("show_motes here")
     resp = make_response(redirect(url_for('.index')))
@@ -232,7 +232,7 @@ def show_motes():
     return resp
 
 @main.route('/front_on/<int:channel>')
-#@login_required
+@login_required
 def ctrl_front_on(channel):
     print("ctrl_front :")
     print(channel)
@@ -243,7 +243,7 @@ def ctrl_front_on(channel):
     return resp
 
 @main.route('/front_off/<int:channel>')
-#@login_required
+@login_required
 def ctrl_front_off(channel):
     print("ctrl_front here")
     payload = b'&state=0&mask=%lx' % (channel & 0xFF)
@@ -254,7 +254,7 @@ def ctrl_front_off(channel):
 
 
 @main.route('/back_on/<int:channel>')
-#@login_required
+@login_required
 def ctrl_back_on(channel):
     print("ctrl_back here")
     payload = b'&state=0xFF&mask=%lx' % (channel & 0xFF)
@@ -264,7 +264,7 @@ def ctrl_back_on(channel):
     return resp
 
 @main.route('/back_off/<int:channel>')
-#@login_required
+@login_required
 def ctrl_back_off(channel):
     payload = b'&state=0&mask=%lx' % (channel & 0xFF)
     bg.post(motes_ip['back_light'].encode('utf-8'),b'relay-sw',payload)
@@ -274,7 +274,7 @@ def ctrl_back_off(channel):
 
 
 @main.route('/fish_jar_on/<int:channel>')
-#@login_required
+@login_required
 def ctrl_fish_jar_on(channel):
     payload = b'&state=0xFF&mask=%lx' % (channel & 0xFF)
     bg.post(motes_ip['fish'].encode('utf-8'),b'relay-sw',payload)
@@ -283,7 +283,7 @@ def ctrl_fish_jar_on(channel):
     return resp
 
 @main.route('/fish_jar_off/<int:channel>')
-#@login_required
+@login_required
 def ctrl_fish_jar_off(channel):
     payload = b'&state=0&mask=%lx' % (channel & 0xFF)
     bg.post(motes_ip['fish'].encode('utf-8'),b'relay-sw',payload)

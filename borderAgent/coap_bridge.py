@@ -5,6 +5,7 @@ import sys
 import time
 import select
 import socket
+import readline
 
 here = sys.path[0]
 sys.path.insert(0, os.path.join(here,'..'))

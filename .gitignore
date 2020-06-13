@@ -1,6 +1,7 @@
 *.py[cod]
 .vscode/
 borderAgent/data/
+*.OpenSSL
 # C extensions
 *.so
 

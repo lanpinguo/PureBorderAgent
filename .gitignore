@@ -1,5 +1,6 @@
 *.py[cod]
-
+.vscode/
+borderAgent/data/
 # C extensions
 *.so
 

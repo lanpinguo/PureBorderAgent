@@ -5,6 +5,10 @@ import sys
 import time
 import select
 import socket
+import readline
+import subprocess
+import logging_setup
+import json
 
 here = sys.path[0]
 sys.path.insert(0, os.path.join(here,'..'))
@@ -168,9 +172,12 @@ class bridgeAgent(threading.Thread):
 		#print(addr)
 		#print(res)
 		#print(payload)
-		result = b''
+		result = b'this is echo for test'
 		if opt == b'post':
 			result = self.post(addr,res,payload)
+		result += b"test"
+		print(source)
+		print(result)
 		self.socket_handler.sendto(result,source)
 
 	#======================== private =========================================
@@ -231,9 +238,9 @@ class bridgeAgent(threading.Thread):
 							break
 
 			if self.bridge_ip != '':
-				#nbr = self.get_nbr()
-				#self.addNewMote(nbr)
-				pass
+				nbr = self.get_nbr()
+				self.addNewMote(nbr)
+				print(nbr)
 
 
 
@@ -285,8 +292,58 @@ class nbrResource(coapResource.coapResource):
 		return (respCode,respOptions,respPayload)
 
 
+def cmd(command,log):
+	subp = subprocess.Popen(command,shell=False,stdout=log,stderr=subprocess.STDOUT)
+	#subp.wait(2)
+	#if subp.poll() == 0:
+	#    print(subp.communicate()[1])
+	#else:
+	#    print("失败")
+	return subp
+
+def CreateAccessoryInstance(ip_address):
+	data_dir = 'data'
+	
+	accessory_base_info = {
+		"aid":1,
+		"category":5,
+		"name":"Pure Light Bulb",
+		"manufacturer":"Pure",
+		"model":"LightBulb1,2",
+		"serialNumber":"02124b001005fdf3",
+		"firmwareVersion":"1",
+		"hardwareVersion":"1"
+	}
+
+	if not os.path.exists(data_dir) :
+		os.mkdir(data_dir)
+
+	accessory_dir = os.path.join(data_dir,ip_address)
+	if os.path.exists(accessory_dir):
+		return
+
+	os.mkdir(accessory_dir)
+
+	_log = open(os.path.join(accessory_dir, 'running.log'),'a')
+
+	accessory_store_dir = os.path.join(accessory_dir,'.HomeKitStore')
+	os.mkdir(accessory_store_dir)
+
+	with open(os.path.join(accessory_store_dir,'00.01'), 'w') as info_file:
+		json.dump(accessory_base_info,info_file)
+
+
 if __name__ == '__main__':
-	import logging_setup
+
+	# Check data, log dirs, if not exist, then create them
+
+
+	test_mote_ip = 'fd00::212:4b00:1005:fdf3'
+	#os.mkdir(test_mote_ip)
+	#os.rmdir(test_mote_ip)
+	ss = None
+
+
 	b = bridgeAgent(ipAddress = 'FD00::1')
 
 	#for t in threading.enumerate():
@@ -295,13 +352,21 @@ if __name__ == '__main__':
 	try:
 		while True:
 			# let the server run
-			i = input('#')
+			i = input('coap>')
 			if i == 'get':
 				#print(i)
 				b.get_sensor('nbr')
+			elif i == 'sim':
+				CreateAccessoryInstance(test_mote_ip)
+				pass
 			elif i == 'exit':
 				break
 	except KeyboardInterrupt:
 		print("key interrupt")
 	b.shutdown()	
+	if ss:
+		print('kill sub process ')
+		ss.terminate()         
+	print('exit')
+
 	sys.exit(0)

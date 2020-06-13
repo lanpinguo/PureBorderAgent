@@ -6,12 +6,9 @@ import time
 import select
 import socket
 import readline
-<<<<<<< HEAD
 import subprocess
 import logging_setup
 import json
-=======
->>>>>>> a9cb1557c4c94789fc7a6f037d5022f18ec1f3b2
 
 here = sys.path[0]
 sys.path.insert(0, os.path.join(here,'..'))
@@ -241,9 +238,10 @@ class bridgeAgent(threading.Thread):
 							break
 
 			if self.bridge_ip != '':
-				nbr = self.get_nbr()
-				self.addNewMote(nbr)
-				print(nbr)
+				#nbr = self.get_nbr()
+				#self.addNewMote(nbr)
+				#print(nbr)
+				pass
 
 
 
@@ -334,13 +332,37 @@ def CreateAccessoryInstance(ip_address):
 
 	with open(os.path.join(accessory_store_dir,'00.01'), 'w') as info_file:
 		json.dump(accessory_base_info,info_file)
+	
+	category = 5
+	setupCode = '518-08-582'
+	setupGenerator = os.path.join(os.getcwd(),"AccessorySetupGenerator_arm64")
+	command = "%s --ip --category %d --setup-code \'%s\'" % (setupGenerator, category, setupCode)
+	#print(command)
+	proc = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
+	try:
+		outs, errs = proc.communicate(timeout=5)
+	except TimeoutExpired:
+		proc.kill()
+		outs, errs = proc.communicate()
 
-	ret = subprocess.run(
-		["AccessorySetupGenerator_arm64",
-		 "--ip", "--category 5",
-		  "--setup-code 518-08-582"],
-		   capture_output=True)
-	print(ret)
+	#print(outs.split(b'\n'))
+	rc = proc.poll()
+	if rc is None:
+		return
+	if rc != 0:
+		return
+	output = outs.split(b'\n')
+	print(output)
+	print(output[2])
+	srpSalt = bytes.decode(output[2],encoding='utf8')
+	srpVerifier= bytes.decode(output[3],encoding='utf8')
+	setupID = output[4] + b'\0'
+
+	with open(os.path.join(accessory_store_dir,'40.10'), 'wb') as setupInfoFile:
+		setupInfoFile.write(bytes.fromhex(srpSalt + srpVerifier))
+
+	with open(os.path.join(accessory_store_dir,'40.11'), 'wb') as setupIDFile:
+		setupIDFile.write(setupID)
 
 if __name__ == '__main__':
 

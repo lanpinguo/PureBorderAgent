@@ -335,6 +335,12 @@ def CreateAccessoryInstance(ip_address):
 	with open(os.path.join(accessory_store_dir,'00.01'), 'w') as info_file:
 		json.dump(accessory_base_info,info_file)
 
+	ret = subprocess.run(
+		["AccessorySetupGenerator_arm64",
+		 "--ip", "--category 5",
+		  "--setup-code 518-08-582"],
+		   capture_output=True)
+	print(ret)
 
 if __name__ == '__main__':
 

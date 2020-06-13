@@ -9,7 +9,8 @@ a 6lowpan border agent for coap.
 
 #### 安装教程
 
-1.  xxxx
+1.  dependency 
+pip install pycryptodomex
 2.  xxxx
 3.  xxxx
 

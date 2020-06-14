@@ -356,6 +356,8 @@ class HAP_ACCESSORY():
             os.getcwd().encode(encoding='utf8'),
             self.data_dir,
             self.instanceKeyName))
+        self.log = open(os.path.join(self.accessory_dir, b'running.log'),'w')
+
         self.CreateAccessoryInstance(self.ip_addr,category)
 
     def GetInstanceKeyName(self):
@@ -386,7 +388,6 @@ class HAP_ACCESSORY():
         os.mkdir(accessory_dir)
         self.accessory_dir = accessory_dir
 
-        self.log = os.path.join(accessory_dir, b'running.log')
 
         accessory_store_dir = os.path.join(accessory_dir,b'.HomeKitStore')
         os.mkdir(accessory_store_dir)
@@ -444,7 +445,11 @@ class HAP_ACCESSORY():
             #command = "%s --root %s" % (hap_templete_app, self.accessory_dir.decode('utf8'))
             #print(command)
             #self.hap_accessory_proc = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
-            self.hap_accessory_proc = subprocess.Popen(hap_templete_app, cwd=self.accessory_dir, stdout=subprocess.PIPE)
+            self.hap_accessory_proc = subprocess.Popen(
+                                            hap_templete_app, 
+                                            cwd=self.accessory_dir,
+                                            stdout=self.log,
+                                            stderr=subprocess.STDOUT)
 
     def ShowState(self):
         if self.hap_accessory_proc :
@@ -466,6 +471,7 @@ class HAP_ACCESSORY():
 
     def shutdown(self):
             self.hap_accessory_proc.kill()
+            self.log.close()
 
 
 if __name__ == '__main__':

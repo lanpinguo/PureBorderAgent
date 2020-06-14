@@ -30,6 +30,37 @@ log = logging.getLogger('bridgeAgent')
 log.setLevel(logging.DEBUG)
 log.addHandler(NullHandler())
 
+# Accessory general defines
+Accessory_Type_Other                 =  1
+Accessory_Type_Bridges               =  2
+Accessory_Type_Fans                  =  3
+Accessory_Type_Garage_Door_Openers   =  4
+Accessory_Type_Lighting              =  5
+Accessory_Type_Locks                 =  6
+Accessory_Type_Outlets               =  7
+Accessory_Type_Switches              =  8
+Accessory_Type_Thermostats           =  9
+Accessory_Type_Sensors               = 10
+Accessory_Type_Security_Systems      = 11
+Accessory_Type_Doors                 = 12
+Accessory_Type_Windows               = 13
+Accessory_Type_Window_Coverings      = 14
+Accessory_Type_Programmable_Switches = 15
+Accessory_Type_Range_Extenders       = 16
+Accessory_Type_IP_Cameras            = 17
+Accessory_Type_Video_Doorbells       = 18
+Accessory_Type_Air_Purifiers         = 19
+Accessory_Type_Heaters               = 20
+Accessory_Type_Air_Conditioners      = 21
+Accessory_Type_Humidifiers           = 22
+Accessory_Type_Dehumidifiers         = 23
+Accessory_Type_Sprinklers            = 28
+Accessory_Type_Faucets               = 29
+Accessory_Type_Shower_Systems        = 30
+
+AccessoryTempleteMap = {Accessory_Type_Lighting : 'GeneralTemplete.OpenSSL'}
+
+
 
 MOTE_IP = '' #fd00::212:4b00:1005:fdf3'
 TIMEOUT = 2
@@ -294,44 +325,7 @@ class nbrResource(coapResource.coapResource):
         return (respCode,respOptions,respPayload)
 
 
-def cmd(command,log):
-    subp = subprocess.Popen(command,shell=False,stdout=log,stderr=subprocess.STDOUT)
-    #subp.wait(2)
-    #if subp.poll() == 0:
-    #    print(subp.communicate()[1])
-    #else:
-    #    print("失败")
-    return subp
 
-
-Accessory_Type_Other                 =  1
-Accessory_Type_Bridges               =  2
-Accessory_Type_Fans                  =  3
-Accessory_Type_Garage_Door_Openers   =  4
-Accessory_Type_Lighting              =  5
-Accessory_Type_Locks                 =  6
-Accessory_Type_Outlets               =  7
-Accessory_Type_Switches              =  8
-Accessory_Type_Thermostats           =  9
-Accessory_Type_Sensors               = 10
-Accessory_Type_Security_Systems      = 11
-Accessory_Type_Doors                 = 12
-Accessory_Type_Windows               = 13
-Accessory_Type_Window_Coverings      = 14
-Accessory_Type_Programmable_Switches = 15
-Accessory_Type_Range_Extenders       = 16
-Accessory_Type_IP_Cameras            = 17
-Accessory_Type_Video_Doorbells       = 18
-Accessory_Type_Air_Purifiers         = 19
-Accessory_Type_Heaters               = 20
-Accessory_Type_Air_Conditioners      = 21
-Accessory_Type_Humidifiers           = 22
-Accessory_Type_Dehumidifiers         = 23
-Accessory_Type_Sprinklers            = 28
-Accessory_Type_Faucets               = 29
-Accessory_Type_Shower_Systems        = 30
-
-AccessoryTempleteMap = {Accessory_Type_Lighting : 'GeneralTemplete.OpenSSL'}
 
 
 class HAP_ACCESSORY():
@@ -340,6 +334,7 @@ class HAP_ACCESSORY():
     def __init__(self,ip_addr,category):
         self.ip_addr = ip_addr
         self.category = category
+        self.hap_accessory_proc = None
         self.instanceKeyName = self.ip_addr.replace(b':',b'_')
         self.accessory_dir = os.path.abspath(os.path.join(
             os.getcwd().encode(encoding='utf8'),
@@ -430,9 +425,21 @@ class HAP_ACCESSORY():
  
             hap_templete_app = os.path.join(os.getcwd(),AccessoryTempleteMap[self.category])
 
-            command = "%s --root %s" % (hap_templete_app, self.accessory_dir.decode('utf8'))
-            print(command)
-            self.hap_accessory_proc = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
+            #command = "%s --root %s" % (hap_templete_app, self.accessory_dir.decode('utf8'))
+            #print(command)
+            #self.hap_accessory_proc = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
+            self.hap_accessory_proc = subprocess.Popen(hap_templete_app, cwd=self.accessory_dir, stdout=subprocess.PIPE)
+
+    def ShowState(self):
+        if self.hap_accessory_proc :
+            rc = self.hap_accessory_proc.poll()
+            if rc is None:
+                return False
+            if rc != 0:
+                log.error('hap_accessory_proc exception : %ld' % rc)
+            return True
+        else:
+            return True
 
     def ShowLog(self):
         try:
@@ -475,7 +482,7 @@ if __name__ == '__main__':
                     accIns.StartAccessoryInstance()
             elif i == 'log':
                 if accIns:
-                    print(accIns.ShowLog())
+                    print(accIns.ShowState())
             elif i == 'exit':
                 break
     except KeyboardInterrupt:

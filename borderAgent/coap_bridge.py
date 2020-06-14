@@ -117,9 +117,14 @@ class bridgeAgent(threading.Thread):
             return 
         elif ip == 'NULL':
             return
-            
+
+        if ip in self.mote_list:
+            return 
+        print(ip)   
         log.debug('%s' % (ip))
-        self.mote_list[ip] = mote(ip)
+        self.mote_list[ip] = HAP_ACCESSORY(ip,Accessory_Type_Lighting)
+        time.sleep(1)
+        self.mote_list[ip].StartAccessoryInstance()
         #print(self.mote_list)
         
     def shutdown(self):
@@ -127,6 +132,8 @@ class bridgeAgent(threading.Thread):
         self.join()
         self.coap.close()
         self.socket_handler.close()
+        for acc in self.mote_list:
+            self.mote_list[acc].shutdown()
 
     def get_nbr(self):
         try:
@@ -258,7 +265,8 @@ class bridgeAgent(threading.Thread):
         epoll.register(self.socket_handler.fileno(), select.EPOLLIN)
         fd_to_socket = {self.socket_handler.fileno():self.socket_handler,}
 
-
+        print('Start poll sockets')
+        self.check_period = 0
         while self.active:
             events = epoll.poll(TIMEOUT)
             if events :
@@ -269,11 +277,15 @@ class bridgeAgent(threading.Thread):
                             self.active = False
                             break
 
-            if self.bridge_ip != '':
-                #nbr = self.get_nbr()
-                #self.addNewMote(nbr)
-                #print(nbr)
-                pass
+            if self.check_period > 0:
+                self.check_period -= 1
+
+            if self.bridge_ip != '' and self.check_period == 0:
+                nbr = self.get_nbr()
+                if nbr == 'NULL':
+                    self.check_period = 5
+                    continue
+                self.addNewMote(nbr)
 
 
 
@@ -332,7 +344,11 @@ class HAP_ACCESSORY():
     data_dir = b'data'
 
     def __init__(self,ip_addr,category):
-        self.ip_addr = ip_addr
+
+        if isinstance(ip_addr, str):
+            self.ip_addr = ip_addr.encode(encoding='utf8')
+        else:
+            self.ip_addr = ip_addr
         self.category = category
         self.hap_accessory_proc = None
         self.instanceKeyName = self.ip_addr.replace(b':',b'_')
@@ -340,7 +356,7 @@ class HAP_ACCESSORY():
             os.getcwd().encode(encoding='utf8'),
             self.data_dir,
             self.instanceKeyName))
-        self.CreateAccessoryInstance(ip_addr,category)
+        self.CreateAccessoryInstance(self.ip_addr,category)
 
     def GetInstanceKeyName(self):
             return self.instanceKeyName
@@ -351,10 +367,10 @@ class HAP_ACCESSORY():
         accessory_base_info = {
             "aid":1,
             "category":5,
-            "name":"Pure Light Bulb",
+            "name":str(ip_address[6::],encoding='utf8'),
             "manufacturer":"Pure",
             "model":"LightBulb1,2",
-            "serialNumber":"02124b001005fdf3",
+            "serialNumber": str(ip_address[6::].replace(b':',b''),encoding='utf8'),
             "firmwareVersion":"1",
             "hardwareVersion":"1"
         }
@@ -483,6 +499,8 @@ if __name__ == '__main__':
             elif i == 'log':
                 if accIns:
                     print(accIns.ShowState())
+            elif i == 'dump':
+                print(b.mote_list)
             elif i == 'exit':
                 break
     except KeyboardInterrupt:

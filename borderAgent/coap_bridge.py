@@ -69,7 +69,45 @@ class mote():
         self.ip = ip
         self.desc = desc
         
-        
+def read_http_request(raw):
+    lines = raw.split('\r\n')
+    http_header = {}
+    http_body = None
+
+    if b'PUT' in lines[0]:
+        http_header['method'] = b'PUT'
+    elif b'POST' in lines[0]:
+        http_header['method'] = b'POST'
+    elif b'GET' in lines[0]:
+        http_header['method'] = b'GET'
+    elif b'DELETE' in lines[0]:
+        http_header['method'] = b'DELETE'
+    else:
+        return http_header,http_body
+    http_header['url'] = lines[0].split()[1]
+    http_header['version'] = lines[0].split()[2]
+    
+    if b'Host' in lines[1]:
+        http_header['host'] = lines[1].split(':')[1].strip()
+    else:
+        return http_header,http_body
+
+    if b'Content-Type' in lines[2]:
+        http_header['host'] = lines[2].split(':')[1].strip()
+    else:
+        return http_header,http_body
+                
+    if b'Content-Length' in lines[3]:
+        http_header['Content-Length'] = int(lines[3].split(':')[1].strip())
+    else:
+        return http_header,http_body
+
+    body_len = http_header['Content-Length']
+    if body_len > 0 :
+        http_header = raw[-body_len::]
+
+    return http_header,http_body
+
 
 class bridgeAgent(threading.Thread):
     BUFSIZE = 1024
@@ -198,26 +236,29 @@ class bridgeAgent(threading.Thread):
             return b''
 
     def recv_handler(self,timestamp,source,data):
-        option = data.split(b'/')
-        print(option)
-        opt = option[0].strip(b':')
-        res_len = int(option[2].strip(b'[').strip(b']'))
-        addr = option[3].strip(b'[').strip(b']')
-        addr = ''.join([chr(b) for b in addr])
-        res = option[4][0:res_len]
-        res = ''.join([chr(b) for b in res])
-        payload = option[4][res_len::]
-        #print(opt)
-        #print(addr)
-        #print(res)
-        #print(payload)
-        result = b'this is echo for test'
-        if opt == b'post':
-            result = self.post(addr,res,payload)
-        result += b"test"
+        # option = data.split(b'/')
+        # print(option)
+        # opt = option[0].strip(b':')
+        # res_len = int(option[2].strip(b'[').strip(b']'))
+        # addr = option[3].strip(b'[').strip(b']')
+        # addr = ''.join([chr(b) for b in addr])
+        # res = option[4][0:res_len]
+        # res = ''.join([chr(b) for b in res])
+        # payload = option[4][res_len::]
+        # #print(opt)
+        # #print(addr)
+        # #print(res)
+        # #print(payload)
+        # result = b'this is echo for test'
+        # if opt == b'post':
+        #     result = self.post(addr,res,payload)
+        # result += b"test"
         print(source)
-        print(result)
-        self.socket_handler.sendto(result,source)
+        print(data)
+        header,body = read_http_request(data)
+        print(header)
+        print(body)
+        #self.socket_handler.sendto(result,source)
 
     #======================== private =========================================
     def _socket_ready_handle(self, s):

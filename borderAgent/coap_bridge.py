@@ -70,7 +70,7 @@ class mote():
         self.desc = desc
         
 def read_http_request(raw):
-    lines = raw.split('\r\n')
+    lines = raw.split(b'\r\n')
     http_header = {}
     http_body = None
 
@@ -88,23 +88,23 @@ def read_http_request(raw):
     http_header['version'] = lines[0].split()[2]
     
     if b'Host' in lines[1]:
-        http_header['host'] = lines[1].split(':')[1].strip()
+        http_header['host'] = lines[1].split(b':')[1].strip()
     else:
         return http_header,http_body
 
     if b'Content-Type' in lines[2]:
-        http_header['host'] = lines[2].split(':')[1].strip()
+        http_header['host'] = lines[2].split(b':')[1].strip()
     else:
         return http_header,http_body
                 
     if b'Content-Length' in lines[3]:
-        http_header['Content-Length'] = int(lines[3].split(':')[1].strip())
+        http_header['Content-Length'] = int(lines[3].split(b':')[1].strip())
     else:
         return http_header,http_body
 
     body_len = http_header['Content-Length']
     if body_len > 0 :
-        http_header = raw[-body_len::]
+        http_body = raw[-body_len::]
 
     return http_header,http_body
 

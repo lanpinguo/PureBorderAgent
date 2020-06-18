@@ -254,10 +254,13 @@ class bridgeAgent(threading.Thread):
         #     result = self.post(addr,res,payload)
         # result += b"test"
         print(source)
-        print(data)
+        #print(data)
         header,body = read_http_request(data)
         print(header)
         print(body)
+        if body:
+            characteristics = json.loads(body)
+            print(characteristics)
         #self.socket_handler.sendto(result,source)
 
     #======================== private =========================================

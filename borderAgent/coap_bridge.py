@@ -93,7 +93,7 @@ def read_http_request(raw):
         return http_header,http_body
 
     if b'Content-Type' in lines[2]:
-        http_header['host'] = lines[2].split(b':')[1].strip()
+        http_header['Content-Type'] = lines[2].split(b':')[1].strip()
     else:
         return http_header,http_body
                 
@@ -235,6 +235,17 @@ class bridgeAgent(threading.Thread):
             log.critical((err))
             return b''
 
+    def http_request_handle(self,hdr,body=None):
+
+        if body:
+            characteristics = json.loads(str(body,encoding='utf8'))
+            #print(characteristics)
+
+        if hdr['method'] == b'PUT':
+            ip = b'FD00::' + hdr['host'].replace(b'.',b':')
+            print(ip)
+            #self.post()
+
     def recv_handler(self,timestamp,source,data):
         # option = data.split(b'/')
         # print(option)
@@ -254,13 +265,11 @@ class bridgeAgent(threading.Thread):
         #     result = self.post(addr,res,payload)
         # result += b"test"
         print(source)
-        #print(data)
+        print(data)
         header,body = read_http_request(data)
-        print(header)
-        print(body)
-        if body:
-            characteristics = json.loads(body)
-            print(characteristics)
+        #print(header)
+        #print(body)
+        self.http_request_handle(hdr=header,body = body)
         #self.socket_handler.sendto(result,source)
 
     #======================== private =========================================
@@ -400,7 +409,7 @@ class HAP_ACCESSORY():
             os.getcwd().encode(encoding='utf8'),
             self.data_dir,
             self.instanceKeyName))
-        self.log = open(os.path.join(self.accessory_dir, b'running.log'),'w')
+        self.log = None
 
         self.CreateAccessoryInstance(self.ip_addr,category)
 
@@ -413,7 +422,7 @@ class HAP_ACCESSORY():
         accessory_base_info = {
             "aid":1,
             "category":5,
-            "name":str(ip_address[6::],encoding='utf8'),
+            "name":str(ip_address[6::].replace(b':',b'.'),encoding='utf8'),
             "manufacturer":"Pure",
             "model":"LightBulb1,2",
             "serialNumber": str(ip_address[6::].replace(b':',b''),encoding='utf8'),
@@ -485,6 +494,9 @@ class HAP_ACCESSORY():
                 return 
  
             hap_templete_app = os.path.join(os.getcwd(),AccessoryTempleteMap[self.category])
+
+            if self.log is None:
+                self.log = open(os.path.join(self.accessory_dir, b'running.log'),'w')
 
             #command = "%s --root %s" % (hap_templete_app, self.accessory_dir.decode('utf8'))
             #print(command)

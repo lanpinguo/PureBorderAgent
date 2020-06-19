@@ -148,6 +148,7 @@ class bridgeAgent(threading.Thread):
     def setBridgeIp(self,ip,opt):
         if opt == '2':
             self.bridge_ip = ip
+            #print(self.bridge_ip)
         
 
     def addNewMote(self,ip):
@@ -224,7 +225,9 @@ class bridgeAgent(threading.Thread):
 
     def post(self,ip,res,payload):
         try:
-
+            #print(ip)
+            #print(res)
+            #print(payload)
             # retrieve value of 'test' resource
             p = self.coap.PUT('coap://[%s]/%s' % (ip,res),
                     confirmable=True,payload=payload)
@@ -232,19 +235,27 @@ class bridgeAgent(threading.Thread):
             return p
             
         except Exception as err:
+            print(err)
             log.critical((err))
             return b''
 
     def http_request_handle(self,hdr,body=None):
 
         if body:
-            characteristics = json.loads(str(body,encoding='utf8'))
-            #print(characteristics)
+            characteristics = json.loads(str(body,encoding='utf8'))['characteristics']
+            print(characteristics)
 
         if hdr['method'] == b'PUT':
-            ip = b'FD00::' + hdr['host'].replace(b'.',b':')
-            print(ip)
-            #self.post()
+            ip = b'fd00::' + hdr['host'].replace(b'.', b':')
+            ip = str(ip,encoding='utf8')
+            
+            if characteristics[0]['value']:
+                payload = b'&state=%lx&mask=%lx' % (1,1)
+            else:
+                payload = b'&state=%lx&mask=%lx' % (0,1)
+
+            response = self.post(ip,'relay-sw',payload)
+            print(response)
 
     def recv_handler(self,timestamp,source,data):
         # option = data.split(b'/')
@@ -549,21 +560,31 @@ if __name__ == '__main__':
     try:
         while True:
             # let the server run
-            i = input('coap>')
-            if i == 'get':
+            raw_in = input('coap>')
+            args = raw_in.split()
+            if len(args) == 0:
+                continue
+            if args[0] == 'get':
                 #print(i)
                 b.get_sensor('nbr')
-            elif i == 'sim':
+            elif args[0] == 'sim':
                 accIns = HAP_ACCESSORY(test_mote_ip, Accessory_Type_Lighting)
-            elif i == 'start':
+            elif args[0] == 'start':
                 if accIns:
                     accIns.StartAccessoryInstance()
-            elif i == 'log':
-                if accIns:
-                    print(accIns.ShowState())
-            elif i == 'dump':
+
+            elif args[0] == 'sw':
+                if len(args) != 2:
+                    continue
+                payload = b'&state=0xFF&mask=%lx' % (1 & 0xFF)
+                response = b.post(b'fd00::212:4b00:1940:c0d5',b'relay_sw',payload)
+                print(response)
+                response = b.post(b.bridge_ip,b'relay_sw',payload)
+                print(response)
+
+            elif args[0] == 'dump':
                 print(b.mote_list)
-            elif i == 'exit':
+            elif args[0] == 'exit':
                 break
     except KeyboardInterrupt:
         print("key interrupt")

@@ -1,0 +1,231 @@
+#!/usr/bin/python3
+
+import os
+import sys
+import time
+import select
+import socket
+import readline
+import subprocess
+import json
+import optparse
+import signal
+import logging
+import threading
+import binascii
+
+import coap_bridge as BRIDGE
+
+
+ROOT_DIR = os.path.dirname(os.path.realpath(__file__))
+
+
+##@var DEBUG_LEVELS
+# Map from strings to debugging levels
+DEBUG_LEVELS = {
+    'debug'              : logging.DEBUG,
+    'verbose'            : logging.DEBUG,
+    'info'               : logging.INFO,
+    'warning'            : logging.WARNING,
+    'warn'               : logging.WARNING,
+    'error'              : logging.ERROR,
+    'critical'           : logging.CRITICAL
+}
+
+
+##@var CONFIG_DEFAULT
+# The default configuration dictionary for OFT
+CONFIG_DEFAULT = {
+    # Miscellaneous options
+    "interactive"        : False,
+
+
+    "coap_host"          : "fd00::1",  
+    "coap_port"          : 5683,
+
+    # Logging options
+    "log_file"           : "bridge.log",
+    "log_dir"            : None,
+    "debug"              : "verbose",
+}
+
+config = {
+    # Miscellaneous options
+    "interactive"        : False,
+
+
+    "coap_host"          : "fd00::1",  
+    "coap_port"          : 5683,
+
+    # Logging options
+    "log_file"           : "bridge.log",
+    "log_dir"            : None,
+    "debug"              : "verbose",
+}
+
+def config_setup():
+    """
+    Set up the configuration including parsing the arguments
+
+    @return A pair (config, args) where config is an config
+    object and args is any additional arguments from the command line
+    """
+
+    usage = "usage: %prog [options] (test|group)..."
+
+    description = """\
+
+The default configuration assumes that an OpenFlow 1.0 switch is attempting to
+connect to a controller on the machine running OFTest, port 6653. Additionally,
+the interfaces veth1, veth3, veth5, and veth7 should be connected to the switch's
+dataplane.
+
+"""
+
+
+    parser = optparse.OptionParser(version="%prog 0.1",
+                                   usage=usage,
+                                   description=description)
+
+    # Set up default values
+    parser.set_defaults(**CONFIG_DEFAULT)
+
+    parser.add_option("-I","--inter", dest="interactive", action="store_true",
+                      help="interactive mode ")
+
+
+    parser.add_option("-H", "--host", dest="coap_host",
+                      help="IP address to listen on (default %default)")
+    parser.add_option("-p", "--port", dest="coap_port",
+                      type="int", help="Port number to listen on (default %default)")
+
+    group = optparse.OptionGroup(parser, "Logging options")
+    group.add_option("--log-file", help="Name of log file (default %default)")
+    group.add_option("--log-dir", help="Name of log directory")
+    dbg_lvl_names = sorted(DEBUG_LEVELS.keys(), key=lambda x: DEBUG_LEVELS[x])
+    group.add_option("--debug", choices=dbg_lvl_names,
+                      help="Debug lvl: debug, info, warning, error, critical (default %default)")
+    group.add_option("-v", "--verbose", action="store_const", dest="debug",
+                     const="verbose", help="Shortcut for --debug=verbose")
+    group.add_option("-q", "--quiet", action="store_const", dest="debug",
+                     const="warning", help="Shortcut for --debug=warning")
+    parser.add_option_group(group)
+
+
+    # Might need this if other parsers want command line
+    # parser.allow_interspersed_args = False
+    (options, args) = parser.parse_args()
+
+
+    # Convert options from a Namespace to a plain dictionary
+    global config
+    config = CONFIG_DEFAULT.copy()
+    for key in config.keys():
+        config[key] = getattr(options, key)
+
+    return (config, args)
+
+
+
+def open_logfile(name):
+    """
+    (Re)open logfile
+
+    When using a log directory a new logfile is created for each test. The same
+    code is used to implement a single logfile in the absence of --log-dir.
+    """
+
+    _format = "%(asctime)s.%(msecs)03d  %(name)-10s: %(levelname)-8s: %(message)s"
+    _datefmt = "%H:%M:%S"
+
+    if config["log_dir"] != None:
+        filename = os.path.join(config["log_dir"], name) + ".log"
+    else:
+        filename = config["log_file"]
+
+    logger = logging.getLogger()
+
+    # Remove any existing handlers
+    for handler in logger.handlers:
+        logger.removeHandler(handler)
+        handler.close()
+
+    # Add a new handler
+    handler = logging.FileHandler(filename, mode='a')
+    handler.setFormatter(logging.Formatter(_format, _datefmt))
+    logger.addHandler(handler)
+
+
+def logging_setup(config):
+    """
+    Set up logging based on config
+    """
+
+    logging.getLogger().setLevel(DEBUG_LEVELS[config["debug"]])
+
+    if config["log_dir"] != None:
+        if os.path.exists(config["log_dir"]):
+            import shutil
+            shutil.rmtree(config["log_dir"])
+        os.makedirs(config["log_dir"])
+    else:
+        if os.path.exists(config["log_file"]):
+            os.remove(config["log_file"])
+
+    open_logfile('main')
+
+
+
+
+if __name__ == '__main__':
+
+    #
+    # Main script
+    #
+
+    # Setup global configuration
+    (new_config, args) = config_setup()
+
+    logging_setup(config)
+
+    logging.info("++++++++ " + time.asctime() + " ++++++++")
+
+
+
+    # Remove python's signal handler which raises KeyboardError. Exiting from an
+    # exception waits for all threads to terminate which might not happen.
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
+
+
+    print(config)
+
+    bridge = BRIDGE.bridgeAgent(ipAddress = config['coap_host'])
+
+
+    try :
+        # Enter main loop
+        while True:
+        
+            if config['interactive']:
+                try:
+                    # let the server run
+                    raw_in = input('coap>')
+                    args = raw_in.split()
+                except KeyboardInterrupt:
+                    print("key interrupt")
+            else:
+                args = []
+
+
+            if len(args) == 0:
+                continue
+
+            elif args[0] == 'exit':
+                break
+
+    except:
+        print("exception occured")    
+
+    print('exit')
+    bridge.shutdown()
+    sys.exit(0)

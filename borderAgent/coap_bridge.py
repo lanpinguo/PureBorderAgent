@@ -7,7 +7,7 @@ import select
 import socket
 import readline
 import subprocess
-import logging_setup
+#import logging_setup
 import json
 
 here = sys.path[0]
@@ -27,8 +27,8 @@ class NullHandler(logging.Handler):
         pass
 log = logging.getLogger('bridgeAgent')
 #log.setLevel(logging.ERROR)
-log.setLevel(logging.DEBUG)
-log.addHandler(NullHandler())
+#log.setLevel(logging.DEBUG)
+#log.addHandler(NullHandler())
 
 # Accessory general defines
 Accessory_Type_Other                 =  1

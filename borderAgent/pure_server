@@ -1,0 +1,319 @@
+#!/usr/bin/python3
+
+import os
+import sys
+import time
+import select
+import socket
+import readline
+import subprocess
+import json
+import optparse
+import signal
+import logging
+import threading
+import binascii
+
+import coap_bridge as BRIDGE
+
+
+ROOT_DIR = os.path.dirname(os.path.realpath(__file__))
+TIMEOUT = 1
+BUFSIZE = 1024
+
+##@var DEBUG_LEVELS
+# Map from strings to debugging levels
+DEBUG_LEVELS = {
+    'debug'              : logging.DEBUG,
+    'verbose'            : logging.DEBUG,
+    'info'               : logging.INFO,
+    'warning'            : logging.WARNING,
+    'warn'               : logging.WARNING,
+    'error'              : logging.ERROR,
+    'critical'           : logging.CRITICAL
+}
+
+
+##@var CONFIG_DEFAULT
+# The default configuration dictionary for OFT
+CONFIG_DEFAULT = {
+    # Miscellaneous options
+    "interactive"        : False,
+
+
+    "coap_host"          : "fd00::1",  
+    "coap_port"          : 5683,
+
+    # Logging options
+    "log_file"           : "bridge.log",
+    "log_dir"            : "running_logs",
+    "debug"              : "verbose",
+}
+
+config = {
+    # Miscellaneous options
+    "interactive"        : False,
+
+
+    "coap_host"          : "fd00::1",  
+    "coap_port"          : 5683,
+
+    # Logging options
+    "log_file"           : "bridge.log",
+    "log_dir"            : "running_logs",
+    "debug"              : "verbose",
+}
+
+def config_setup():
+    """
+    Set up the configuration including parsing the arguments
+
+    @return A pair (config, args) where config is an config
+    object and args is any additional arguments from the command line
+    """
+
+    usage = "usage: %prog [options] (test|group)..."
+
+    description = """\
+
+The default configuration assumes that an OpenFlow 1.0 switch is attempting to
+connect to a controller on the machine running OFTest, port 6653. Additionally,
+the interfaces veth1, veth3, veth5, and veth7 should be connected to the switch's
+dataplane.
+
+"""
+
+
+    parser = optparse.OptionParser(version="%prog 0.1",
+                                   usage=usage,
+                                   description=description)
+
+    # Set up default values
+    parser.set_defaults(**CONFIG_DEFAULT)
+
+    parser.add_option("-I","--inter", dest="interactive", action="store_true",
+                      help="interactive mode ")
+
+
+    parser.add_option("-H", "--host", dest="coap_host",
+                      help="IP address to listen on (default %default)")
+    parser.add_option("-p", "--port", dest="coap_port",
+                      type="int", help="Port number to listen on (default %default)")
+
+    group = optparse.OptionGroup(parser, "Logging options")
+    group.add_option("--log-file", help="Name of log file (default %default)")
+    group.add_option("--log-dir", help="Name of log directory")
+    dbg_lvl_names = sorted(DEBUG_LEVELS.keys(), key=lambda x: DEBUG_LEVELS[x])
+    group.add_option("--debug", choices=dbg_lvl_names,
+                      help="Debug lvl: debug, info, warning, error, critical (default %default)")
+    group.add_option("-v", "--verbose", action="store_const", dest="debug",
+                     const="verbose", help="Shortcut for --debug=verbose")
+    group.add_option("-q", "--quiet", action="store_const", dest="debug",
+                     const="warning", help="Shortcut for --debug=warning")
+    parser.add_option_group(group)
+
+
+    # Might need this if other parsers want command line
+    # parser.allow_interspersed_args = False
+    (options, args) = parser.parse_args()
+
+
+    # Convert options from a Namespace to a plain dictionary
+    global config
+    config = CONFIG_DEFAULT.copy()
+    for key in config.keys():
+        config[key] = getattr(options, key)
+
+    return (config, args)
+
+
+
+def open_logfile(name):
+    """
+    (Re)open logfile
+
+    When using a log directory a new logfile is created for each run. The same
+    code is used to implement a single logfile in the absence of --log-dir.
+    """
+
+    _format = "%(asctime)s.%(msecs)03d  %(name)-10s: %(levelname)-8s: %(message)s"
+    _datefmt = "%H:%M:%S"
+
+    if config["log_dir"] != None:
+        filename = os.path.join(config["log_dir"], name) + ".log"
+    else:
+        filename = config["log_file"]
+
+    logger = logging.getLogger()
+
+    # Remove any existing handlers
+    for handler in logger.handlers:
+        logger.removeHandler(handler)
+        handler.close()
+
+    # Add a new handler
+    handler = logging.FileHandler(filename, mode='a')
+    handler.setFormatter(logging.Formatter(_format, _datefmt))
+    logger.addHandler(handler)
+
+
+def logging_setup(config):
+    """
+    Set up logging based on config
+    """
+
+    logging.getLogger().setLevel(DEBUG_LEVELS[config["debug"]])
+
+    if config["log_dir"] != None:
+        if os.path.exists(config["log_dir"]):
+            import shutil
+            shutil.rmtree(config["log_dir"])
+        os.makedirs(config["log_dir"])
+    else:
+        if os.path.exists(config["log_file"]):
+            os.remove(config["log_file"])
+
+    open_logfile('main')
+
+
+def recv_handler(timestamp,source,data):
+    request = json.loads(str(data,encoding='utf8'))
+    return request,source
+
+
+#======================== private =========================================
+def _socket_ready_handle(s,socket_handler):
+    """
+    Handle an input-ready socket
+
+    @param s The socket object that is ready
+    @returns 0 on success, -1 on error
+    """
+
+    if s and s == socket_handler:
+        try:
+            # blocking wait for something from UDP socket
+            raw,conn = socket_handler.recvfrom(BUFSIZE)
+        except socket.error as err:
+            log.critical("socket error: {0}".format(err))
+            return [],None
+        else:
+            if not raw:
+                log.error("no data read from socket, stopping")
+                return [],None
+
+        #print(conn)
+        timestamp = time.time()
+        source    = conn
+        #data      = [ord(b) for b in raw] #python2
+        data      = raw  #python3
+        log.debug("got {2} from {1} at {0}".format(timestamp,source,data))
+        #print("got {2} from {1} at {0}".format(timestamp,source,data))
+        #call the process handler with the params
+        return recv_handler(timestamp,source,data)
+    else:
+        log.error("Unknown socket ready: " + str(s))
+        return [],None
+
+    return [],None
+
+
+
+def poll_remote_command(target_soc):
+
+    events = epoll.poll(TIMEOUT)
+    if events :
+        for fd, event in events:    
+            if event & select.EPOLLIN:   
+                sock = fd_to_socket[fd]
+                return _socket_ready_handle(sock,target_soc)
+    return [],None
+
+
+
+def cmd_process(args):
+
+    if args[0] == 'shutdown':
+        return None
+
+    return 'success'
+
+if __name__ == '__main__':
+
+    #
+    # Main script
+    #
+
+    # Setup global configuration
+    (new_config, args) = config_setup()
+
+    logging_setup(config)
+    
+    log = logging.getLogger('pure_server')
+
+    log.info("++++++++ " + time.asctime() + " ++++++++")
+
+
+
+    # Remove python's signal handler which raises KeyboardError. Exiting from an
+    # exception waits for all threads to terminate which might not happen.
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
+
+
+    log.info(config)
+    server_address = '/tmp/coap_pure_server'
+    # Make sure the socket does not already exist
+    try:
+        os.unlink(server_address)
+    except OSError:
+        if os.path.exists(server_address):
+            raise
+    # Create a UDS socket
+    socket_handler = socket.socket(socket.AF_UNIX,socket.SOCK_DGRAM)
+    # Bind the socket to the port
+    log.info(  'starting up on %s' % server_address)
+    socket_handler.bind(server_address)
+
+    epoll = select.epoll()
+    epoll.register(socket_handler.fileno(), select.EPOLLIN)
+    fd_to_socket = {socket_handler.fileno():socket_handler,}
+
+
+    bridge = BRIDGE.bridgeAgent(ipAddress = config['coap_host'])
+
+
+    try :
+        # Enter main loop
+        while True:
+        
+            if config['interactive']:
+                try:
+                    # let the server run
+                    raw_in = input('coap>')
+                    args = raw_in.split()
+                except KeyboardInterrupt:
+                    log.critical("key interrupt")
+            else:
+                args,remote = poll_remote_command(socket_handler)
+
+
+            if len(args) == 0:
+                continue
+
+            log.info(args)
+            rc = cmd_process(args)
+            if  rc != None:
+                log.info("Execute remote cmd: %s" % rc)
+                socket_handler.sendto(json.dumps(rc).encode(encoding='utf8'),remote)
+         
+            else:
+                socket_handler.sendto(json.dumps('The coap server is going to exit').encode(encoding='utf8'),remote)
+                break
+
+    except Exception as err:
+        log.critical("exception occured: {0}".format(err))    
+
+
+    log.info('exit')
+    bridge.shutdown()
+    sys.exit(0)

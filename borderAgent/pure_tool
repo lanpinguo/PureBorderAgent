@@ -18,7 +18,8 @@ import coap_bridge as BRIDGE
 
 
 ROOT_DIR = os.path.dirname(os.path.realpath(__file__))
-
+TIMEOUT = 1
+BUFSIZE = 1024
 
 ##@var DEBUG_LEVELS
 # Map from strings to debugging levels
@@ -44,7 +45,7 @@ CONFIG_DEFAULT = {
     "coap_port"          : 5683,
 
     # Logging options
-    "log_file"           : "bridge.log",
+    "log_file"           : "pure_tool.log",
     "log_dir"            : None,
     "debug"              : "verbose",
 }
@@ -58,7 +59,7 @@ config = {
     "coap_port"          : 5683,
 
     # Logging options
-    "log_file"           : "bridge.log",
+    "log_file"           : "pure_tool.log",
     "log_dir"            : None,
     "debug"              : "verbose",
 }
@@ -131,7 +132,7 @@ def open_logfile(name):
     """
     (Re)open logfile
 
-    When using a log directory a new logfile is created for each test. The same
+    When using a log directory a new logfile is created for each run. The same
     code is used to implement a single logfile in the absence of --log-dir.
     """
 
@@ -175,6 +176,59 @@ def logging_setup(config):
     open_logfile('main')
 
 
+def recv_handler(timestamp,source,data):
+    request = json.loads(str(data,encoding='utf8'))
+    return request,source
+
+
+#======================== private =========================================
+def _socket_ready_handle(s,socket_handler):
+    """
+    Handle an input-ready socket
+
+    @param s The socket object that is ready
+    @returns 0 on success, -1 on error
+    """
+
+    if s and s == socket_handler:
+        try:
+            # blocking wait for something from UDP socket
+            raw,conn = socket_handler.recvfrom(BUFSIZE)
+        except socket.error as err:
+            log.critical("socket error: {0}".format(err))
+            return [],None
+        else:
+            if not raw:
+                log.error("no data read from socket, stopping")
+                return [],None
+
+        #print(conn)
+        timestamp = time.time()
+        source    = conn
+        #data      = [ord(b) for b in raw] #python2
+        data      = raw  #python3
+        log.debug("got {2} from {1} at {0}".format(timestamp,source,data))
+        #print("got {2} from {1} at {0}".format(timestamp,source,data))
+        #call the process handler with the params
+        return recv_handler(timestamp,source,data)
+    else:
+        log.error("Unknown socket ready: " + str(s))
+        return [],None
+
+    return [],None
+
+
+
+def poll_remote_response(target_soc):
+
+    events = epoll.poll(TIMEOUT)
+    if events :
+        for fd, event in events:    
+            if event & select.EPOLLIN:   
+                sock = fd_to_socket[fd]
+                return _socket_ready_handle(sock,target_soc)
+    return [],None
+
 
 
 if __name__ == '__main__':
@@ -187,8 +241,10 @@ if __name__ == '__main__':
     (new_config, args) = config_setup()
 
     logging_setup(config)
+    
+    log = logging.getLogger('pure_tool')
 
-    logging.info("++++++++ " + time.asctime() + " ++++++++")
+    log.info("++++++++ " + time.asctime() + " ++++++++")
 
 
 
@@ -197,35 +253,54 @@ if __name__ == '__main__':
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
 
-    print(config)
+    log.info(config)
+    server_address = '/tmp/coap_pure_server'
+    local_address = 'coap_pure_client'
+    # Make sure the socket does not already exist
+    try:
+        os.unlink(local_address)
+    except OSError:
+        if os.path.exists(local_address):
+            raise
+    # Create a UDS socket
+    socket_handler = socket.socket(socket.AF_UNIX,socket.SOCK_DGRAM)
+    # Bind the socket to the port
+    log.info(  'starting up on %s' % local_address)
+    socket_handler.bind(local_address)
 
-    bridge = BRIDGE.bridgeAgent(ipAddress = config['coap_host'])
+    epoll = select.epoll()
+    epoll.register(socket_handler.fileno(), select.EPOLLIN)
+    fd_to_socket = {socket_handler.fileno():socket_handler,}
+
+
 
 
     try :
         # Enter main loop
         while True:
         
-            if config['interactive']:
-                try:
-                    # let the server run
-                    raw_in = input('coap>')
-                    args = raw_in.split()
-                except KeyboardInterrupt:
-                    print("key interrupt")
-            else:
-                args = []
-
+            try:
+                # let the server run
+                raw_in = input('coap>')
+                args = raw_in.split()
+            except KeyboardInterrupt:
+                log.critical("key interrupt")
 
             if len(args) == 0:
                 continue
 
-            elif args[0] == 'exit':
+            if args[0] == 'exit':
                 break
 
-    except:
-        print("exception occured")    
+            log.info("send to server %s with %s" % (server_address, json.dumps(args)))
+            socket_handler.sendto(json.dumps(args).encode(encoding='utf8'),server_address)
+            result = poll_remote_response(socket_handler)
 
-    print('exit')
-    bridge.shutdown()
+            print(result)
+
+
+    except Exception as err:
+        log.critical("exception occured: {0}".format(err))    
+
+    log.info('exit')
     sys.exit(0)

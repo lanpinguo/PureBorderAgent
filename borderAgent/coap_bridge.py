@@ -159,7 +159,6 @@ class bridgeAgent(threading.Thread):
 
         if ip in self.mote_list:
             return 
-        print(ip)   
         log.debug('%s' % (ip))
         self.mote_list[ip] = HAP_ACCESSORY(ip,Accessory_Type_Lighting)
         time.sleep(1)
@@ -235,7 +234,6 @@ class bridgeAgent(threading.Thread):
             return p
             
         except Exception as err:
-            print(err)
             log.critical((err))
             return b''
 
@@ -243,7 +241,6 @@ class bridgeAgent(threading.Thread):
 
         if body:
             characteristics = json.loads(str(body,encoding='utf8'))['characteristics']
-            print(characteristics)
 
         if hdr['method'] == b'PUT':
             ip = b'fd00::' + hdr['host'].replace(b'.', b':')
@@ -255,33 +252,11 @@ class bridgeAgent(threading.Thread):
                 payload = b'&state=%lx&mask=%lx' % (0,1)
 
             response = self.post(ip,'relay-sw',payload)
-            print(response)
+            log.info('Got response %s from %s' % (response,ip))
 
     def recv_handler(self,timestamp,source,data):
-        # option = data.split(b'/')
-        # print(option)
-        # opt = option[0].strip(b':')
-        # res_len = int(option[2].strip(b'[').strip(b']'))
-        # addr = option[3].strip(b'[').strip(b']')
-        # addr = ''.join([chr(b) for b in addr])
-        # res = option[4][0:res_len]
-        # res = ''.join([chr(b) for b in res])
-        # payload = option[4][res_len::]
-        # #print(opt)
-        # #print(addr)
-        # #print(res)
-        # #print(payload)
-        # result = b'this is echo for test'
-        # if opt == b'post':
-        #     result = self.post(addr,res,payload)
-        # result += b"test"
-        print(source)
-        print(data)
         header,body = read_http_request(data)
-        #print(header)
-        #print(body)
         self.http_request_handle(hdr=header,body = body)
-        #self.socket_handler.sendto(result,source)
 
     #======================== private =========================================
     def _socket_ready_handle(self, s):
@@ -329,7 +304,7 @@ class bridgeAgent(threading.Thread):
         epoll.register(self.socket_handler.fileno(), select.EPOLLIN)
         fd_to_socket = {self.socket_handler.fileno():self.socket_handler,}
 
-        print('Start poll sockets')
+        log.info(  'Start poll sockets')
         self.check_period = 0
         while self.active:
             events = epoll.poll(TIMEOUT)

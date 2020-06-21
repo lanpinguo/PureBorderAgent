@@ -238,6 +238,10 @@ def cmd_process(args):
 
     return 'success'
 
+def sig_handler(sig, frame):
+        log.warning('Got signal: %d' % sig)
+
+
 if __name__ == '__main__':
 
     #
@@ -258,7 +262,9 @@ if __name__ == '__main__':
     # Remove python's signal handler which raises KeyboardError. Exiting from an
     # exception waits for all threads to terminate which might not happen.
     signal.signal(signal.SIGINT, signal.SIG_DFL)
-
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
+    
+    signal.signal(signal.SIGHUP, sig_handler)
 
     log.info(config)
     server_address = '/tmp/coap_pure_server'

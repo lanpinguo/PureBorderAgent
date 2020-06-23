@@ -1,7 +1,7 @@
 *.py[cod]
 .vscode/
 borderAgent/data/
-*.OpenSSL
+
 .HomeKitStore
 # C extensions
 *.so

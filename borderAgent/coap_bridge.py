@@ -58,7 +58,10 @@ Accessory_Type_Sprinklers            = 28
 Accessory_Type_Faucets               = 29
 Accessory_Type_Shower_Systems        = 30
 
-AccessoryTempleteMap = {Accessory_Type_Lighting : 'GeneralTemplete.OpenSSL'}
+AccessoryTempleteMap = {
+    Accessory_Type_Lighting : 'GeneralTemplete.OpenSSL',
+    Accessory_Type_Switches : 'GeneralTemplete.OpenSSL'
+    }
 
 
 
@@ -160,7 +163,7 @@ class bridgeAgent(threading.Thread):
         if ip in self.mote_list:
             return 
         log.debug('%s' % (ip))
-        self.mote_list[ip] = HAP_ACCESSORY(ip,Accessory_Type_Lighting)
+        self.mote_list[ip] = HAP_ACCESSORY(ip,Accessory_Type_Switches)
         time.sleep(1)
         self.mote_list[ip].StartAccessoryInstance()
         #print(self.mote_list)
@@ -241,15 +244,17 @@ class bridgeAgent(threading.Thread):
 
         if body:
             characteristics = json.loads(str(body,encoding='utf8'))['characteristics']
+        else:
+            return
 
         if hdr['method'] == b'PUT':
             ip = b'fd00::' + hdr['host'].replace(b'.', b':')
             ip = str(ip,encoding='utf8')
-            
+            sw_id = (1<<characteristics[0]["localId"] ) & 0xFF
             if characteristics[0]['value']:
-                payload = b'&state=%lx&mask=%lx' % (1,1)
+                payload = b'&state=%lx&mask=%lx' % (sw_id,sw_id)
             else:
-                payload = b'&state=%lx&mask=%lx' % (0,1)
+                payload = b'&state=%lx&mask=%lx' % (0,sw_id)
 
             response = self.post(ip,'relay-sw',payload)
             log.info('Got response %s from %s' % (response,ip))
@@ -406,14 +411,15 @@ class HAP_ACCESSORY():
     def CreateAccessoryInstance(self,ip_address,category):
         
         accessory_base_info = {
-            "aid":1,
-            "category":5,
-            "name":str(ip_address[6::].replace(b':',b'.'),encoding='utf8'),
-            "manufacturer":"Pure",
-            "model":"LightBulb1,2",
-            "serialNumber": str(ip_address[6::].replace(b':',b''),encoding='utf8'),
-            "firmwareVersion":"1",
-            "hardwareVersion":"1"
+            "aid"                   :1,
+            "category"              :category,
+            "name"                  :str(ip_address[6::].replace(b':',b'.'),encoding='utf8'),
+            "manufacturer"          :"Pure",
+            "model"                 :"Switch1,2",
+            "serialNumber"          : str(ip_address[6::].replace(b':',b''),encoding='utf8'),
+            "firmwareVersion"       :"1",
+            "hardwareVersion"       :"1",
+            "services"              :["switch", "switch", "switch", "switch", "switch", "switch",  "switch", "switch"]
         }
 
         if not os.path.exists(self.data_dir) :

@@ -247,7 +247,7 @@ if __name__ == '__main__':
     #
     # Main script
     #
-
+    os.chdir(ROOT_DIR)
     # Setup global configuration
     (new_config, args) = config_setup()
 

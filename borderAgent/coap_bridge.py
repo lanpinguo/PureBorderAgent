@@ -63,7 +63,18 @@ AccessoryTempleteMap = {
     Accessory_Type_Switches : 'GeneralTemplete.OpenSSL'
     }
 
+# mote capability list
+MoteCapabilityList = {
+    'Sensor-1,0' : {'services' : [  {'type' : 'temperature', 'number' : 1},
+                                    {'type' : 'humidity', 'number' : 1}
+                                 ] 
+                   },
 
+    'Switch-1,0' : {'services' : [  {'type' : 'switch', 'number' : 8},
+                                 ] 
+                   },
+
+}
 
 MOTE_IP = '' #fd00::212:4b00:1005:fdf3'
 TIMEOUT = 2
@@ -114,7 +125,7 @@ def read_http_request(raw):
 
 class bridgeAgent(threading.Thread):
     BUFSIZE = 1024
-
+    IPv6_PREFIX = 'FD00'
     def __init__(self,ipAddress='',server_address = '/tmp/borderAgent'):
         # initialize the parent class
         threading.Thread.__init__(self)
@@ -162,10 +173,26 @@ class bridgeAgent(threading.Thread):
 
         if ip in self.mote_list:
             return 
-        log.debug('%s' % (ip))
-        self.mote_list[ip] = HAP_ACCESSORY(ip,Accessory_Type_Switches)
-        time.sleep(1)
-        self.mote_list[ip].StartAccessoryInstance()
+            
+        global_ip = self.IPv6_PREFIX + ip[4::]
+
+        log.info("new mote {0} coming".format(global_ip))
+
+        profile = self.get_mote_profile(global_ip)
+        log.info("new mote {0} profile: {1}".format(global_ip,profile))
+        
+        if profile is None:
+            return
+        
+        if profile['model'] not in MoteCapabilityList:
+            return
+        
+        capability = MoteCapabilityList[profile['model']]
+        log.info("new mote {0} capability: {1}".format(global_ip,capability))
+       
+        #self.mote_list[ip] = HAP_ACCESSORY(ip,Accessory_Type_Switches)
+        #time.sleep(1)
+        #self.mote_list[ip].StartAccessoryInstance()
         #print(self.mote_list)
         
     def shutdown(self):
@@ -207,6 +234,37 @@ class bridgeAgent(threading.Thread):
             
         except Exception as err:
             log.critical((err))
+
+    def get_mote_profile(self,mote_ip):
+        profile = {}
+        try:
+
+            # retrieve value of 'test' resource
+            p = self.coap.GET('coap://[%s]/%s' % (mote_ip,'model'),
+                    confirmable=True)
+            var = ''.join([chr(b) for b in p])
+            profile['model'] = var
+
+            p = self.coap.GET('coap://[%s]/%s' % (mote_ip,'hw'),
+                    confirmable=True)
+            var = ''.join([chr(b) for b in p])
+            profile['hw-version'] = var
+
+            p = self.coap.GET('coap://[%s]/%s' % (mote_ip,'sw'),
+                    confirmable=True)
+            var = ''.join([chr(b) for b in p])
+            profile['sw-version'] = var
+
+            p = self.coap.GET('coap://[%s]/%s' % (mote_ip,'uptime'),
+                    confirmable=True)
+            var = ''.join([chr(b) for b in p])
+            profile['uptime'] = var
+
+            return profile
+
+        except Exception as err:
+            log.critical(err)
+            return None
 
     def get_motes(self):
         return self.mote_list

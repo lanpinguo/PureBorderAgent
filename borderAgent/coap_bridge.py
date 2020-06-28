@@ -301,7 +301,7 @@ class bridgeAgent(threading.Thread):
             log.critical((err))
             return ''
 
-    def http_request_handle(self,hdr,body=None,srcAddr=None):
+    def http_request_handle(self,hdr,body=None,source=None):
 
         if hdr['method'] == b'PUT':
             ip = b'fd00::' + hdr['host'].replace(b'.', b':')
@@ -326,21 +326,29 @@ class bridgeAgent(threading.Thread):
             ip = str(ip,encoding='utf8')
             if hdr['url'] == b'/temperature':
                 res = 'temperature'
+                response = self.get(ip,res)
+                log.info('Got response {0} from {1}'.format(response,ip))
+                json_body = json.dumps({'temperature' : float(response)})
+                http_msg =  'HTTP/1.1 200 OK\r\n' + \
+                            'Content-Type: application/hap+json\r\n' + \
+                            'Content-Length: {0}\r\n\r\n'.format(len(json_body)) + \
+                            json_body
             elif hdr['url'] == b'/humidity':
                 res = 'humidity'
-            response = self.get(ip,res)
-            log.info('Got response {0} from {1}'.format(response,ip))
-            json_body = json.dumps({'temperature' : float(response)})
-            http_msg =  'HTTP/1.1 200 OK\r\n' + \
-                        'Content-Type: application/hap+json\r\n' + \
-                        'Content-Length: {0}\r\n\r\n'.format(len(json_body)) + \
-                        json_body
+                response = self.get(ip,res)
+                log.info('Got response {0} from {1}'.format(response,ip))
+                json_body = json.dumps({'humidity' : float(response)})
+                http_msg =  'HTTP/1.1 200 OK\r\n' + \
+                            'Content-Type: application/hap+json\r\n' + \
+                            'Content-Length: {0}\r\n\r\n'.format(len(json_body)) + \
+                            json_body
             log.info('send response {0} '.format(http_msg))
+            self.socket_handler.sendto(http_msg.encode(encoding='utf8'),source)
            
                
     def recv_handler(self,timestamp,source,data):
         header,body = read_http_request(data)
-        self.http_request_handle(hdr=header,body = body)
+        self.http_request_handle(hdr=header,body = body, source=source)
 
     #======================== private =========================================
     def _socket_ready_handle(self, s):

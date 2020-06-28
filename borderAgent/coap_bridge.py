@@ -60,6 +60,7 @@ Accessory_Type_Shower_Systems        = 30
 
 AccessoryTempleteMap = {
     Accessory_Type_Lighting : 'GeneralTemplete.OpenSSL',
+    Accessory_Type_Sensors : 'GeneralTemplete.OpenSSL',
     Accessory_Type_Switches : 'GeneralTemplete.OpenSSL'
     }
 
@@ -67,11 +68,14 @@ AccessoryTempleteMap = {
 MoteCapabilityList = {
     'Sensor-1,0' : {'services' : [  {'type' : 'temperature', 'number' : 1},
                                     {'type' : 'humidity', 'number' : 1}
-                                 ] 
+                                 ],
+                    'accessory-type' : Accessory_Type_Sensors
+
                    },
 
     'Switch-1,0' : {'services' : [  {'type' : 'switch', 'number' : 8},
-                                 ] 
+                                 ] ,
+                    'accessory-type' : Accessory_Type_Switches
                    },
 
 }
@@ -187,12 +191,9 @@ class bridgeAgent(threading.Thread):
         if profile['model'] not in MoteCapabilityList:
             return
         
-        capability = MoteCapabilityList[profile['model']]
-        log.info("new mote {0} capability: {1}".format(global_ip,capability))
-       
-        #self.mote_list[ip] = HAP_ACCESSORY(ip,Accessory_Type_Switches)
-        #time.sleep(1)
-        #self.mote_list[ip].StartAccessoryInstance()
+        self.mote_list[ip] = HAP_ACCESSORY(ip,profile)
+        time.sleep(1)
+        self.mote_list[ip].StartAccessoryInstance()
         #print(self.mote_list)
         
     def shutdown(self):
@@ -445,13 +446,16 @@ class nbrResource(coapResource.coapResource):
 class HAP_ACCESSORY():
     data_dir = b'data'
 
-    def __init__(self,ip_addr,category):
+    def __init__(self,ip_addr,profile):
 
         if isinstance(ip_addr, str):
             self.ip_addr = ip_addr.encode(encoding='utf8')
         else:
             self.ip_addr = ip_addr
-        self.category = category
+        self.profile = profile
+        self.capability = MoteCapabilityList[profile['model']]
+        log.info("new mote {0} capability: {1}".format(ip_addr,self.capability))
+        self.category = self.capability['accessory-type']
         self.hap_accessory_proc = None
         self.instanceKeyName = self.ip_addr.replace(b':',b'_')
         self.accessory_dir = os.path.abspath(os.path.join(
@@ -460,24 +464,24 @@ class HAP_ACCESSORY():
             self.instanceKeyName))
         self.log = None
 
-        self.CreateAccessoryInstance(self.ip_addr,category)
+        self.CreateAccessoryInstance(self.ip_addr)
 
     def GetInstanceKeyName(self):
             return self.instanceKeyName
 
 
-    def CreateAccessoryInstance(self,ip_address,category):
+    def CreateAccessoryInstance(self,ip_address):
         
         accessory_base_info = {
-            "aid"                   :1,
-            "category"              :category,
-            "name"                  :str(ip_address[6::].replace(b':',b'.'),encoding='utf8'),
-            "manufacturer"          :"Pure",
-            "model"                 :"Switch1,2",
+            "aid"                   : 1,
+            "category"              : self.category,
+            "name"                  : str(ip_address[6::].replace(b':',b'.'),encoding='utf8'),
+            "manufacturer"          : "Pure",
+            "model"                 : self.profile['model'],
             "serialNumber"          : str(ip_address[6::].replace(b':',b''),encoding='utf8'),
-            "firmwareVersion"       :"1",
-            "hardwareVersion"       :"1",
-            "services"              :["switch", "switch", "switch", "switch", "switch", "switch",  "switch", "switch"]
+            "firmwareVersion"       : self.profile['sw-version'],
+            "hardwareVersion"       : self.profile['hw-version'],
+            "services"              : self.capability['services']
         }
 
         if not os.path.exists(self.data_dir) :
@@ -501,7 +505,7 @@ class HAP_ACCESSORY():
         #category = 5
         setupCode = '518-08-582'
         setupGenerator = os.path.join(os.getcwd(),"AccessorySetupGenerator_arm64")
-        command = "%s --ip --category %d --setup-code \'%s\'" % (setupGenerator, category, setupCode)
+        command = "%s --ip --category %d --setup-code \'%s\'" % (setupGenerator, self.category, setupCode)
         #print(command)
         proc = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
         try:

@@ -235,6 +235,7 @@ class bridgeAgent(threading.Thread):
             
         except Exception as err:
             log.critical((err))
+            log.critical("The agent need reboot")
 
     def get_mote_profile(self,mote_ip):
         profile = {}
@@ -277,12 +278,13 @@ class bridgeAgent(threading.Thread):
             p = self.coap.GET('coap://[%s]/%s' % (ip,res),
                     confirmable=True)
 
-            #print(p)
-            return p
+            result = str(p,encoding='utf8')
+
+            return result
             
         except Exception as err:
             log.critical((err))
-            return b''
+            return ''
 
     def post(self,ip,res,payload):
         try:
@@ -292,23 +294,24 @@ class bridgeAgent(threading.Thread):
             # retrieve value of 'test' resource
             p = self.coap.PUT('coap://[%s]/%s' % (ip,res),
                     confirmable=True,payload=payload)
-            #print(p)
-            return p
+            result = str(p,encoding='utf8')
+            return result
             
         except Exception as err:
             log.critical((err))
-            return b''
+            return ''
 
-    def http_request_handle(self,hdr,body=None):
-
-        if body:
-            characteristics = json.loads(str(body,encoding='utf8'))['characteristics']
-        else:
-            return
+    def http_request_handle(self,hdr,body=None,srcAddr=None):
 
         if hdr['method'] == b'PUT':
             ip = b'fd00::' + hdr['host'].replace(b'.', b':')
             ip = str(ip,encoding='utf8')
+
+            characteristics = None
+            if body:
+                characteristics = json.loads(str(body,encoding='utf8'))['characteristics']
+            if characteristics is None:
+                return
             sw_id = (1<<characteristics[0]["localId"] ) & 0xFF
             if characteristics[0]['value']:
                 payload = b'&state=%lx&mask=%lx' % (sw_id,sw_id)
@@ -316,8 +319,25 @@ class bridgeAgent(threading.Thread):
                 payload = b'&state=%lx&mask=%lx' % (0,sw_id)
 
             response = self.post(ip,'relay-sw',payload)
-            log.info('Got response %s from %s' % (response,ip))
+            log.info('Got response {0} from {1}'.format(response,ip))
 
+        elif hdr['method'] == b'GET':
+            ip = b'fd00::' + hdr['host'].replace(b'.', b':')
+            ip = str(ip,encoding='utf8')
+            if hdr['url'] == b'/temperature':
+                res = 'temperature'
+            elif hdr['url'] == b'/humidity':
+                res = 'humidity'
+            response = self.get(ip,res)
+            log.info('Got response {0} from {1}'.format(response,ip))
+            json_body = json.dumps({'temperature' : float(response)})
+            http_msg =  'HTTP/1.1 200 OK\r\n' + \
+                        'Content-Type: application/hap+json\r\n' + \
+                        'Content-Length: {0}\r\n\r\n'.format(len(json_body)) + \
+                        json_body
+            log.info('send response {0} '.format(http_msg))
+           
+               
     def recv_handler(self,timestamp,source,data):
         header,body = read_http_request(data)
         self.http_request_handle(hdr=header,body = body)

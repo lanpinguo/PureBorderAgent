@@ -14,7 +14,7 @@ import readline
 import select
 import struct
 import threading
-
+import util
 from coap.socketUdpReal import socketUdpReal 
 
 OTA_FRAME_TYPE_NONE             = 0
@@ -23,7 +23,24 @@ OTA_FRAME_TYPE_DATA_REQUEST     = 2
 OTA_FRAME_TYPE_FINISH           = 3
 OTA_FRAME_TYPE_DATA             = 4
 
+OTA_UPGRADE_OPTION_FORCE        = 1
+OTA_UPGRADE_OPTION_RESTART      = 2
+OTA_UPGRADE_OPTION_CONTINUE     = 3
+OTA_UPGRADE_OPTION_CHECK        = 4
+
+
 OTA_FRAME_DATA_BLOCK_SIZE       = 55
+
+
+class MOTE_FIRMWARE():
+
+    def __init__(self, deviceType, version, path):
+        self.deviceType = deviceType
+        self.version = version
+        self.maxSeqno = 1
+        self.checkCode = 0
+
+
 
 class OTA():
 
@@ -31,7 +48,7 @@ class OTA():
         # initialize the parent class
         self.sock = socketUdpReal(ipAddress = ipAddress, udpPort = udpPort, callback = self.ota_callback)
         self.maxSeqno = 1
-        
+        self.checkCode = 0
     def ota_callback(self,timestamp,source,data):
         #print("ota_callback got {2} from {1} at {0}".format(timestamp,source,data))
         frame_type,= struct.unpack_from('B',data,offset=0)
@@ -46,7 +63,7 @@ class OTA():
                 dataLen = len(data)
                 if dataLen == 0 :
                     frame_type = OTA_FRAME_TYPE_FINISH
-                    checkCode = 0x55aa55aa
+                    checkCode = self.checkCode
                     msg = struct.pack("<BIIHI",frame_type,deviceType,version,seqno,checkCode)
                 else:
                     msg = struct.pack("<BIIHB",frame_type,deviceType,version,seqno,dataLen) + data
@@ -61,6 +78,10 @@ class OTA():
         if len < OTA_FRAME_DATA_BLOCK_SIZE :
             print("file size %d is wrong" % len )
             return
+
+        with open("PureSwitch.bin", mode = 'rb') as f: 
+            self.checkCode = util.crc32(f.read(len))
+
         seqno = int(len / OTA_FRAME_DATA_BLOCK_SIZE)
         if len % OTA_FRAME_DATA_BLOCK_SIZE > 0:
             seqno += 1
@@ -69,9 +90,9 @@ class OTA():
         deviceType = 1
         version = 0x10000
         primary = 1
-        force = 1
-        
-        msg = struct.pack("<BIIBHB",frame_type,deviceType,version,primary,seqno,force)
+        option = OTA_UPGRADE_OPTION_RESTART
+        print("max seqno : {0}, checkcode : {1:#X}".format(self.maxSeqno, self.checkCode))
+        msg = struct.pack("<BIIBHB",frame_type,deviceType,version,primary,seqno,option)
         self.sock.sendUdp(destIp = destIp,destPort = 5678,msg = msg)
 
     def close(self):

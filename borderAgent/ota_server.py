@@ -81,7 +81,7 @@ class OTA():
             return
 
         with open("PureSwitch.bin", mode = 'rb') as f: 
-            self.checkCode = util.crc32(f.read(fileLen))
+            self.checkCode = util.crc32_data(f.read(fileLen), 0xFFFFFFFF)
 
         seqno = int(fileLen / OTA_FRAME_DATA_BLOCK_SIZE)
         if fileLen % OTA_FRAME_DATA_BLOCK_SIZE > 0:

@@ -61,6 +61,7 @@ class OTA():
                 f.seek(offset)
                 data = f.read(OTA_FRAME_DATA_BLOCK_SIZE)
                 dataLen = len(data)
+                #print("{0} {1} ".format(seqno,dataLen))
                 if dataLen == 0 :
                     frame_type = OTA_FRAME_TYPE_FINISH
                     checkCode = self.checkCode
@@ -71,28 +72,29 @@ class OTA():
                 print("\rprogress : {0:.2%}".format(seqno / self.maxSeqno),end='', flush=True)
 
     def update(self,destIp):
-        len = os.path.getsize("PureSwitch.bin") 
-        if len > 512 * 1024:
-            print("file size %d is too large" % len )
+        fileLen = os.path.getsize("PureSwitch.bin") 
+        if fileLen > 512 * 1024:
+            print("file size %d is too large" % fileLen )
             return
-        if len < OTA_FRAME_DATA_BLOCK_SIZE :
-            print("file size %d is wrong" % len )
+        if fileLen < OTA_FRAME_DATA_BLOCK_SIZE :
+            print("file size %d is wrong" % fileLen )
             return
 
         with open("PureSwitch.bin", mode = 'rb') as f: 
-            self.checkCode = util.crc32(f.read(len))
+            self.checkCode = util.crc32(f.read(fileLen))
 
-        seqno = int(len / OTA_FRAME_DATA_BLOCK_SIZE)
-        if len % OTA_FRAME_DATA_BLOCK_SIZE > 0:
+        seqno = int(fileLen / OTA_FRAME_DATA_BLOCK_SIZE)
+        if fileLen % OTA_FRAME_DATA_BLOCK_SIZE > 0:
             seqno += 1
         self.maxSeqno = seqno
         frame_type = OTA_FRAME_TYPE_UPGRADE_REQUEST
         deviceType = 1
         version = 0x10000
         primary = 1
+        blockSize = OTA_FRAME_DATA_BLOCK_SIZE
         option = OTA_UPGRADE_OPTION_RESTART
-        print("max seqno : {0}, checkcode : {1:#X}".format(self.maxSeqno, self.checkCode))
-        msg = struct.pack("<BIIBHB",frame_type,deviceType,version,primary,seqno,option)
+        print("File size : {2} bytes, max seqno : {0}, checkcode : {1:#X}".format(self.maxSeqno, self.checkCode, fileLen))
+        msg = struct.pack("<BIIBHIB",frame_type,deviceType,version,primary,blockSize,fileLen,option)
         self.sock.sendUdp(destIp = destIp,destPort = 5678,msg = msg)
 
     def close(self):

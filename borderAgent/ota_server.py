@@ -22,6 +22,8 @@ OTA_FRAME_TYPE_UPGRADE_REQUEST  = 1
 OTA_FRAME_TYPE_DATA_REQUEST     = 2
 OTA_FRAME_TYPE_FINISH           = 3
 OTA_FRAME_TYPE_DATA             = 4
+OTA_FRAME_TYPE_REBOOT           = 5
+
 
 OTA_UPGRADE_OPTION_FORCE        = 1
 OTA_UPGRADE_OPTION_RESTART      = 2
@@ -97,6 +99,16 @@ class OTA():
         msg = struct.pack("<BIIBHIB",frame_type,deviceType,version,primary,blockSize,fileLen,option)
         self.sock.sendUdp(destIp = destIp,destPort = 5678,msg = msg)
 
+    def reboot_request(self,destIp):
+        frame_type = OTA_FRAME_TYPE_REBOOT
+        magicNumber = 0x0BEEF11E
+        deviceType = 1
+        domain = 0
+        reboot = 0x55aa55aa
+        msg = struct.pack("<BIIII",frame_type,magicNumber,deviceType,domain,reboot)
+        self.sock.sendUdp(destIp = destIp,destPort = 5678,msg = msg)
+
+
     def close(self):
         self.sock.close()    
 
@@ -117,8 +129,9 @@ if __name__ == '__main__':
                 continue
             if args[0] == 'update':
                 ota.update(test_mote_ip)
-            elif args[0] == "send":
-                pass
+            elif args[0] == "reboot":
+                print("device will reboot in 4 seconds ")
+                ota.reboot_request(test_mote_ip)
             elif args[0] == 'exit':
                 break
     except Exception as e:

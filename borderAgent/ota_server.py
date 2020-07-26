@@ -31,7 +31,7 @@ OTA_UPGRADE_OPTION_CONTINUE     = 3
 OTA_UPGRADE_OPTION_CHECK        = 4
 
 
-OTA_FRAME_DATA_BLOCK_SIZE       = 55
+OTA_FRAME_DATA_BLOCK_SIZE       = 56
 
 
 class MOTE_FIRMWARE():
@@ -67,7 +67,8 @@ class OTA():
                 if dataLen == 0 :
                     frame_type = OTA_FRAME_TYPE_FINISH
                     checkCode = self.checkCode
-                    msg = struct.pack("<BIIHI",frame_type,deviceType,version,seqno,checkCode)
+                    state = 0
+                    msg = struct.pack("<BIIHIB",frame_type,deviceType,version,seqno,checkCode,state)
                 else:
                     msg = struct.pack("<BIIHB",frame_type,deviceType,version,seqno,dataLen) + data
                 rc = self.sock.sendUdp(destIp = source[0], destPort = 5678,msg = msg)
@@ -92,7 +93,7 @@ class OTA():
         frame_type = OTA_FRAME_TYPE_UPGRADE_REQUEST
         deviceType = 1
         version = 0x10000
-        primary = 1
+        primary = 2
         blockSize = OTA_FRAME_DATA_BLOCK_SIZE
         option = OTA_UPGRADE_OPTION_RESTART
         print("File size : {2} bytes, max seqno : {0}, checkcode : {1:#X}".format(self.maxSeqno, self.checkCode, fileLen))
@@ -116,6 +117,7 @@ class OTA():
 if __name__ == '__main__':
 
     test_mote_ip = b'fd00::0212:4b00:194a:f47d'
+    broadcast_ip = b'ff02::1'
 
     ota = OTA(ipAddress = 'FD00::1', udpPort = 8756)
 
@@ -128,7 +130,12 @@ if __name__ == '__main__':
             if len(args) == 0:
                 continue
             if args[0] == 'update':
-                ota.update(test_mote_ip)
+                dest_ip = broadcast_ip
+                if len(args) >= 2:
+                    if args[1] == '-s':
+                        dest_ip = test_mote_ip
+                print('update :{0}'.format(dest_ip))
+                ota.update(dest_ip)
             elif args[0] == "reboot":
                 print("device will reboot in 4 seconds ")
                 ota.reboot_request(test_mote_ip)

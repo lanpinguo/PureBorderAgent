@@ -51,13 +51,14 @@ class OTA():
         self.sock = socketUdpReal(ipAddress = ipAddress, udpPort = udpPort, callback = self.ota_callback)
         self.maxSeqno = 1
         self.checkCode = 0
+        self.imgName = None
     def ota_callback(self,timestamp,source,data):
         #print("ota_callback got {2} from {1} at {0}".format(timestamp,source,data))
         frame_type,= struct.unpack_from('B',data,offset=0)
         if frame_type == OTA_FRAME_TYPE_DATA_REQUEST:
             t,deviceType,version,seqno, = struct.unpack_from('<BIIH',data)
             #print("{0} {1} {2} {3}".format(t,deviceType,version,seqno))
-            with open("PureSwitch.bin", mode = 'rb') as f: 
+            with open(self.imgName, mode = 'rb') as f: 
                 frame_type = OTA_FRAME_TYPE_DATA
                 offset = seqno * OTA_FRAME_DATA_BLOCK_SIZE
                 f.seek(offset)
@@ -74,8 +75,9 @@ class OTA():
                 rc = self.sock.sendUdp(destIp = source[0], destPort = 5678,msg = msg)
                 print("\rprogress : {0:.2%}".format(seqno / self.maxSeqno),end='', flush=True)
 
-    def update(self,destIp):
-        fileLen = os.path.getsize("PureSwitch.bin") 
+    def update(self,imgName,destIp):
+        fileLen = os.path.getsize(imgName)
+        self.imgName = imgName       
         if fileLen > 512 * 1024:
             print("file size %d is too large" % fileLen )
             return
@@ -83,7 +85,7 @@ class OTA():
             print("file size %d is wrong" % fileLen )
             return
 
-        with open("PureSwitch.bin", mode = 'rb') as f: 
+        with open(imgName, mode = 'rb') as f: 
             self.checkCode = util.crc32_data(f.read(fileLen), 0xFFFFFFFF)
 
         seqno = int(fileLen / OTA_FRAME_DATA_BLOCK_SIZE)
@@ -91,7 +93,7 @@ class OTA():
             seqno += 1
         self.maxSeqno = seqno
         frame_type = OTA_FRAME_TYPE_UPGRADE_REQUEST
-        deviceType = 1
+        deviceType = 2
         version = 0x10000
         primary = 2
         blockSize = OTA_FRAME_DATA_BLOCK_SIZE
@@ -117,6 +119,7 @@ class OTA():
 if __name__ == '__main__':
 
     test_mote_ip = b'fd00::0212:4b00:194a:f47d'
+    gate_mote_ip = b'fd00::0212:4b00:1940:c16c'
     broadcast_ip = b'ff02::1'
 
     ota = OTA(ipAddress = 'FD00::1', udpPort = 8756)
@@ -131,14 +134,31 @@ if __name__ == '__main__':
                 continue
             if args[0] == 'update':
                 dest_ip = broadcast_ip
+                autoReboot = False
                 if len(args) >= 2:
                     if args[1] == '-s':
                         dest_ip = test_mote_ip
+                        imgName = "PureSwitch.bin"
+                    elif args[1] == '-g':
+                        dest_ip = gate_mote_ip
+                        imgName = "border-router.bin"
+
+                if len(args) == 3:
+                    if args[2] == '-r':
+                        autoReboot = True
+
                 print('update :{0}'.format(dest_ip))
-                ota.update(dest_ip)
+                ota.update(imgName,dest_ip)
+
+
             elif args[0] == "reboot":
-                print("device will reboot in 4 seconds ")
-                ota.reboot_request(test_mote_ip)
+                dest_ip = broadcast_ip
+                if len(args) >= 2:
+                    if args[1] == '-s':
+                        dest_ip = test_mote_ip
+                print("device {0}  will reboot in 4 seconds ".format(dest_ip))
+                ota.reboot_request(dest_ip)
+
             elif args[0] == 'exit':
                 break
     except Exception as e:

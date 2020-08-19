@@ -156,6 +156,8 @@ if __name__ == '__main__':
                 if len(args) >= 2:
                     if args[1] == '-s':
                         dest_ip = test_mote_ip
+                    elif args[1] == '-g':
+                        dest_ip = gate_mote_ip
                 print("device {0}  will reboot in 4 seconds ".format(dest_ip))
                 ota.reboot_request(dest_ip)
 

@@ -59,9 +59,9 @@ Accessory_Type_Faucets               = 29
 Accessory_Type_Shower_Systems        = 30
 
 AccessoryTempleteMap = {
-    Accessory_Type_Lighting : 'GeneralTemplete.OpenSSL',
-    Accessory_Type_Sensors : 'GeneralTemplete.OpenSSL',
-    Accessory_Type_Switches : 'GeneralTemplete.OpenSSL'
+    Accessory_Type_Lighting : 'GeneralTemplete_armv7l.OpenSSL',
+    Accessory_Type_Sensors : 'GeneralTemplete_armv7l.OpenSSL',
+    Accessory_Type_Switches : 'GeneralTemplete_armv7l.OpenSSL'
     }
 
 # mote capability list
@@ -532,7 +532,8 @@ class HAP_ACCESSORY():
         
         #category = 5
         setupCode = '518-08-582'
-        setupGenerator = os.path.join(os.getcwd(),"AccessorySetupGenerator_arm64")
+        #setupGenerator = os.path.join(os.getcwd(),"AccessorySetupGenerator_arm64")
+        setupGenerator = os.path.join(os.getcwd(),"AccessorySetupGenerator_armv7l")
         command = "%s --ip --category %d --setup-code \'%s\'" % (setupGenerator, self.category, setupCode)
         #print(command)
         proc = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)

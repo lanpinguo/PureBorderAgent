@@ -324,24 +324,25 @@ class bridgeAgent(threading.Thread):
         elif hdr['method'] == b'GET':
             ip = b'fd00::' + hdr['host'].replace(b'.', b':')
             ip = str(ip,encoding='utf8')
+            http_msg =  'HTTP/1.1 200 OK\r\n' + \
+                        'Content-Type: application/hap+json\r\n'
+
             if hdr['url'] == b'/temperature':
                 res = 'temperature'
                 response = self.get(ip,res)
                 log.info('Got response {0} from {1}'.format(response,ip))
                 json_body = json.dumps({'temperature' : float(response)})
-                http_msg =  'HTTP/1.1 200 OK\r\n' + \
-                            'Content-Type: application/hap+json\r\n' + \
-                            'Content-Length: {0}\r\n\r\n'.format(len(json_body)) + \
+                http_msg += 'Content-Length: {0}\r\n\r\n'.format(len(json_body)) + \
                             json_body
             elif hdr['url'] == b'/humidity':
                 res = 'humidity'
                 response = self.get(ip,res)
                 log.info('Got response {0} from {1}'.format(response,ip))
                 json_body = json.dumps({'humidity' : float(response)})
-                http_msg =  'HTTP/1.1 200 OK\r\n' + \
-                            'Content-Type: application/hap+json\r\n' + \
-                            'Content-Length: {0}\r\n\r\n'.format(len(json_body)) + \
+                http_msg += 'Content-Length: {0}\r\n\r\n'.format(len(json_body)) + \
                             json_body
+            else:
+                log.info('unsupport:{0} '.format(hdr['url']))
             log.info('send response {0} '.format(http_msg))
             self.socket_handler.sendto(http_msg.encode(encoding='utf8'),source)
            

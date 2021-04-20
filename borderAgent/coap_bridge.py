@@ -309,6 +309,7 @@ class bridgeAgent(threading.Thread):
 
             characteristics = None
             if body:
+                #print(body)
                 characteristics = json.loads(str(body,encoding='utf8'))['characteristics']
             if characteristics is None:
                 return
